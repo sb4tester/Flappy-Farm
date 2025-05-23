@@ -1,38 +1,43 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const cors = require('cors');
-require('./firebase'); // initialize Firebase
-const verifyToken = require('./middlewares/verifyFirebaseToken');
+const verifyToken = require('./middlewares/verifyToken');
 
-// Start scheduled jobs
-const dailyJobs = require('./cron/dailyJobs');
-dailyJobs.start();
+const authController = require('./controllers/authController');
+const farmController = require('./controllers/farmController');
+const eggsController = require('./controllers/eggsController');
+const incubatorController = require('./controllers/incubatorController');
+const marketController = require('./controllers/marketController');
+const financeController = require('./controllers/financeController');
+const referralController = require('./controllers/referralController');
+require('./cron/dailyJobs');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-// Health check
-app.get('/health', (req, res) => res.json({ status: 'OK' }));
+app.post('/auth/login', authController.login);
+app.post('/auth/logout', verifyToken, authController.logout);
 
-// Controllers
-const farmController = require('./controllers/farmController');
-const walletController = require('./controllers/walletController');
-const eggsController = require('./controllers/eggsController');
-
-// Routes
 app.get('/farm/chickens', verifyToken, farmController.getChickens);
 app.post('/farm/buy-mother', verifyToken, farmController.buyMother);
-app.post('/farm/feed/:chickenId', verifyToken, farmController.feedChicken);
-app.delete('/farm/sell/:chickenId', verifyToken, farmController.sellChicken);
-
-app.get('/wallet/balance', verifyToken, walletController.getBalance);
-app.post('/wallet/deposit', verifyToken, walletController.deposit);
-app.post('/wallet/withdraw', verifyToken, walletController.withdraw);
+app.post('/farm/feed/:id', verifyToken, farmController.feedChicken);
+app.post('/chickens/sell', verifyToken, farmController.sellChicken);
 
 app.get('/eggs', verifyToken, eggsController.getEggs);
 app.post('/eggs/sell', verifyToken, eggsController.sellEggs);
 
-// TODO: incubator, market, referral
+app.post('/incubator/buy', verifyToken, incubatorController.buyIncubator);
+app.post('/incubator/hatch', verifyToken, incubatorController.hatchEggs);
 
-const PORT = process.env.API_PORT || 3000;
+app.get('/market/orders', verifyToken, marketController.listOrders);
+app.post('/market/order', verifyToken, marketController.createOrder);
+app.post('/market/fill/:id', verifyToken, marketController.fillOrder);
+
+app.post('/finance/deposit', verifyToken, financeController.deposit);
+
+app.get('/referrals/tree', verifyToken, referralController.getReferralTree);
+app.post('/referrals/action', verifyToken, referralController.handleReferralAction);
+
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -1,0 +1,1 @@
+import React from 'react'; export default () => <h1>Farm Page</h1>;

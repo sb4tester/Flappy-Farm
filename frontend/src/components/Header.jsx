@@ -1,0 +1,1 @@
+import React, { useContext } from 'react'; import { GameContext } from '../contexts/GameContext'; export default () => { const { coins } = useContext(GameContext); return <div>Coins: {coins}</div>; };

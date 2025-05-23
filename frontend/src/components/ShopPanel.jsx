@@ -1,0 +1,1 @@
+import React from 'react'; export default ({onClose}) => <div><button onClick={onClose}>Close Shop</button></div>;
