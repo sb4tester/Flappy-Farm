@@ -1,0 +1,169 @@
+
+.lobby {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  max-width: 768px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.background-img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+
+/* Header: coin + sound + menu */
+.header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  max-width: 768px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+  z-index: 2;
+}
+
+.header .left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header img {
+  height: 32px;
+}
+
+.header .right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Status Panel */
+.status-panel {
+  position: absolute;
+  top: 80px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 18px;
+  color: #fff;
+  text-shadow: 1px 1px 2px #000;
+  z-index: 1;
+}
+
+/* Feed Button */
+.feed-button {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+/* Shop Panel */
+.shop-panel {
+  position: absolute;
+  top: 60px;
+  right: 20px;
+  width: 200px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px;
+  border-radius: 10px;
+  z-index: 3;
+}
+
+.shop-panel h3 {
+  margin-top: 0;
+}
+
+.shop-item {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0;
+}
+
+.shop-item button {
+  background: orange;
+  border: none;
+  padding: 4px 8px;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.menu-panel {
+  position: absolute;
+  top: 60px;
+  right: 20px;
+  width: 260px;
+  background: #fff8dc;
+  padding: 15px;
+  border-radius: 16px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.4);
+  z-index: 4;
+  font-family: sans-serif;
+}
+
+.menu-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.menu-profile {
+  text-align: center;
+}
+
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+}
+
+.menu-items {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menu-btn {
+  background: orange;
+  border: none;
+  padding: 10px;
+  color: white;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.badge {
+  background: red;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 12px;
+  margin-left: 5px;
+  font-size: 12px;
+}
