@@ -10,7 +10,7 @@ const Lobby = () => {
   const [showReferral, setShowReferral] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { coins, chickens, eggs, food } = useContext(GameContext);
+  const { coins = 0, chickens = [], eggs = [], food = 0 } = useContext(GameContext);
 
   return (
     <div className="lobby">
@@ -19,7 +19,7 @@ const Lobby = () => {
       <div className="header">
         <div className="left">
           <img src="/assets/images/coin-250x250.png" alt="coin" />
-          <span>{coins.toLocaleString()}</span>
+          <span>{(coins ?? 0).toLocaleString()}</span>
         </div>
         <div className="right">
           <button onClick={() => alert('Toggle Sound')}>
@@ -31,9 +31,9 @@ const Lobby = () => {
         </div>
       </div>
 
-      <div className="status-panel">
-        <div><img src="/assets/images/profile.png" width="40" alt="chickens" /> {chickens}</div>
-        <div><img src="/assets/images/Egg.png" width="40" alt="eggs" /> {eggs}</div>
+      <div className="status-panel">        
+        <div><img src="/assets/images/profile.png" width="40" alt="chickens" /> {chickens.length}</div>
+        <div><img src="/assets/images/Egg.png" width="40" alt="eggs" /> {eggs.length}</div>
         <div><img src="/assets/images/Food-250x250.png" width="40" alt="food" /> {food}</div>
       </div>
 

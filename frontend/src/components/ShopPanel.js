@@ -1,7 +1,8 @@
 
 import React, { useContext } from 'react';
 import { GameContext } from '../contexts/GameContext';
-import { buyMotherChicken } from '../api/api';
+import { buyMother } from '../services/api';
+//import api from '../services/api';
 
 const ShopPanel = ({ onClose }) => {
   const { setChickens } = useContext(GameContext);

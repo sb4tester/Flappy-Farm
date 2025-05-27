@@ -32,3 +32,20 @@ exports.sellEggs = async (req, res) => {
   await userRef.update({ coin_balance: admin.firestore.FieldValue.increment(gained) });
   res.json({ success: true, sold, gained });
 };
+
+const { claimEgg } = require('../services/eggService');
+
+exports.claimEgg = async (req, res) => {
+  const uid = req.user.uid;
+
+  try {
+    const userSnap = await db.collection('users').doc(uid).get();
+    const user = userSnap.data();
+    const totalSpent = user?.totalChickenPurchase || 0;
+
+    const eggType = await claimEgg(uid, totalSpent);
+    res.json({ message: 'Egg claimed', eggType });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

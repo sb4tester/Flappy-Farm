@@ -1,6 +1,7 @@
+console.log("LobbyLayout Loaded");
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet } from 'react-router-dom';
-import { getBalance, getChickens, getEggs, getFood } from '../services/api';
+import { getBalance, getChickens, getEggs, getFood } from '../services/bk-api';
 import './LobbyLayout.css';
 
 const coinIcon    = process.env.PUBLIC_URL + '/assets/coin.png';
@@ -71,7 +72,8 @@ export default function LobbyLayout() {
           <button onClick={() => setShowMenu(false)} className="icon-btn close-btn">
             <img src={closeIcon} alt="close" />
           </button>
-          <div className="menu-items">
+          <div className="menu-items"> 
+            llll
             <Link to="/wallet" className="menu-item">Wallet</Link>
             <Link to="/news" className="menu-item">Notice/News</Link>
             <Link to="/friends" className="menu-item">เพื่อน</Link>

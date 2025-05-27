@@ -67,6 +67,29 @@ module.exports = {
     });
 
     return { sold: qty, type, coinsEarned };
+  },
+  claimEgg: async (userId, totalSpent) => {
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(userId);
+    const eggsCol = userRef.collection('eggs');
+
+    // Determine eligible egg type
+    let type = 'normal';
+    const roll = Math.random();
+    if (totalSpent >= 3000 && roll < 0.001) type = 'gold';       // 0.1%
+    else if (totalSpent >= 1000 && roll < 0.01) type = 'silver'; // 1%
+    else if (totalSpent >= 300 && roll < 0.05) type = 'bronze';  // 5%
+
+    // Save egg
+    await eggsCol.add({
+      type,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return type;
   }
 };
+
+
+
 

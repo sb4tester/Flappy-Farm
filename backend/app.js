@@ -1,9 +1,9 @@
+// app.js - แก้ไขการ setup
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
-const verifyToken = require('./middlewares/verifyToken');
+require('dotenv').config(); // ← เพิ่ม dotenv
 
-const authController = require('./controllers/authController');
+const verifyToken = require('./middlewares/verifyToken');
 const farmController = require('./controllers/farmController');
 const eggsController = require('./controllers/eggsController');
 const incubatorController = require('./controllers/incubatorController');
@@ -14,11 +14,12 @@ require('./cron/dailyJobs');
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-app.post('/auth/login', authController.login);
-app.post('/auth/logout', verifyToken, authController.logout);
+// ใช้ auth routes เท่านั้น ลบ duplicate routes
+app.use('/auth', require('./routes/auth'));
 
+// Protected routes
 app.get('/farm/chickens', verifyToken, farmController.getChickens);
 app.post('/farm/buy-mother', verifyToken, farmController.buyMother);
 app.post('/farm/feed/:id', verifyToken, farmController.feedChicken);
@@ -39,5 +40,17 @@ app.post('/finance/deposit', verifyToken, financeController.deposit);
 app.get('/referrals/tree', verifyToken, referralController.getReferralTree);
 app.post('/referrals/action', verifyToken, referralController.handleReferralAction);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.use('/user', require('./routes/user'));
+
+// Wallet routes
+app.use('/wallet', require('./routes/wallet'));
+
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('❌ Server Error:', err);
+  res.status(500).json({ error: 'Internal Server Error' });
+});
+
+const PORT = process.env.API_PORT || process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
