@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect } from 'react';
 import {
   getBalance,
@@ -15,32 +14,29 @@ export default function GameProvider({ children }) {
   const [eggs, setEggs] = useState([]);
   const [food, setFood] = useState(0);
 
+  const refreshData = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const [balanceRes, chickensRes, eggsRes, foodsRes] = await Promise.all([
+        getBalance(token),
+        getChickens(token),
+        getEggs(token),
+        getFood(token)
+      ]);
+
+      setCoins(balanceRes.data.coin_balance || 0);  
+      setChickens(chickensRes.data.chickens || []);
+      setEggs(eggsRes.data.eggs || []);
+      setFood(foodsRes.data.food || 0);
+    } catch (error) {
+      console.error('โหลดข้อมูลล้มเหลว:', error);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      try {
-        const [balanceRes, chickensRes, eggsRes, foodsRes] = await Promise.all([
-          getBalance(token),
-          getChickens(token),
-          getEggs(token),
-          getFood(token) // Mocked API, replace with actual if available
-        ]);
-
-        setCoins(balanceRes.data.coin_balance || 0);  
-              
-        setChickens(chickensRes.data);
-        console.error('chickensRes:', chickensRes);
-        setEggs(eggsRes.data);
-        console.error('eggsRes:', eggsRes);
-        setFood(foodsRes.data.food || 0);
-      } catch (error) {
-        console.error('โหลดข้อมูลล้มเหลว:', error);
-      }
-    };
-
-    fetchData();
+    refreshData();
   }, []);
 
   return (
@@ -53,7 +49,8 @@ export default function GameProvider({ children }) {
         eggs,
         setEggs,
         food,
-        setFood
+        setFood,
+        refreshData
       }}
     >
       {children}

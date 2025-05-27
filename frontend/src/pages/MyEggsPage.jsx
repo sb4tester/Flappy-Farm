@@ -1,24 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { getEggs, claimEgg, insertToIncubator } from '../services/api';
 
 const MyEggsPage = () => {
   const [eggs, setEggs] = useState([]);
 
   const fetchEggs = async () => {
-    const res = await axios.get('/api/eggs');
-    setEggs(res.data);
+    try {
+      const res = await getEggs();
+      setEggs(res.data.eggs || []);
+    } catch (error) {
+      console.error('Failed to fetch eggs:', error);
+    }
   };
 
-  const claimEgg = async () => {
-    const res = await axios.post('/api/eggs/claim');
-    alert(`คุณได้รับไข่ประเภท: ${res.data.eggType}`);
-    fetchEggs();
+  const handleClaim = async () => {
+    try {
+      const res = await claimEgg();
+      setEggs(res.data.eggs || []);
+    } catch (error) {
+      console.error('Failed to claim egg:', error);
+    }
   };
 
-  const insertToIncubator = async (eggId) => {
-    await axios.post('/api/incubator/insert', { eggId });
-    alert('ใส่ไข่เข้าตู้ฟักแล้ว');
-    fetchEggs();
+  const handleInsertToIncubator = async (eggId) => {
+    try {
+      await insertToIncubator({ eggId });
+      fetchEggs();
+    } catch (error) {
+      console.error('Failed to insert to incubator:', error);
+    }
   };
 
   useEffect(() => {
@@ -28,12 +38,12 @@ const MyEggsPage = () => {
   return (
     <div>
       <h2>ไข่ของฉัน</h2>
-      <button onClick={claimEgg}>รับไข่</button>
+      <button onClick={handleClaim}>รับไข่</button>
       <ul>
         {eggs.map((egg) => (
           <li key={egg.id}>
             🥚 {egg.type}
-            <button onClick={() => insertToIncubator(egg.id)}>ใส่ตู้ฟัก</button>
+            <button onClick={() => handleInsertToIncubator(egg.id)}>ใส่ตู้ฟัก</button>
           </li>
         ))}
       </ul>

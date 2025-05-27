@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { getReferralTree } from '../services/api';
 
 const renderTree = (nodes, level = 1) => (
   <ul>
@@ -16,7 +16,9 @@ const ReferralPage = () => {
   const [tree, setTree] = useState([]);
 
   useEffect(() => {
-    axios.get('/api/referral/tree').then(res => setTree(res.data.tree)).catch(console.error);
+    getReferralTree()
+      .then(res => setTree(res.data.tree))
+      .catch(console.error);
   }, []);
 
   return (

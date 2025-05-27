@@ -24,6 +24,10 @@ exports.buyMother = async (req, res) => {
     feedStreak: 0,
     weight: 1.0,
   });
+  const statsRef = db.collection('promotions').doc('statistics');
+  await statsRef.update({
+    totalChickenPurchase: admin.firestore.FieldValue.increment(1)
+  });
   res.json({ success: true });
 };
 

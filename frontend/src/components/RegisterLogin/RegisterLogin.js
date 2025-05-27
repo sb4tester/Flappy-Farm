@@ -290,8 +290,6 @@ const RegisterLogin = () => {
         <LoginBox>
           <Logo src="/assets/images/logo.png" alt="Logo" />
 
-          <WelcomeText>Welcome to Chicken Farm!</WelcomeText>
-
           <div>
             <Button 
               onClick={() => { setIsSignUp(true); setShowForm(true); setError(""); }} 

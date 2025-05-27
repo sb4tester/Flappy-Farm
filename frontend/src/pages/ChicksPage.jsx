@@ -1,22 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { getChicks, feedChick, sellChick } from '../services/api';
 
 const ChicksPage = () => {
   const [chicks, setChicks] = useState([]);
 
   const fetchChicks = async () => {
-    const res = await axios.get('/api/chicks');
-    setChicks(res.data);
+    try {
+      const res = await getChicks();
+      setChicks(res.data.chicks || []);
+    } catch (error) {
+      console.error('Failed to fetch chicks:', error);
+    }
   };
 
-  const feedChick = async (id) => {
-    await axios.post(`/api/chicks/feed/${id}`);
-    fetchChicks();
+  const handleFeed = async (id) => {
+    try {
+      await feedChick(id);
+      fetchChicks();
+    } catch (error) {
+      console.error('Failed to feed chick:', error);
+    }
   };
 
-  const sellChick = async (id) => {
-    await axios.post(`/api/chicks/sell/${id}`);
-    fetchChicks();
+  const handleSell = async (id) => {
+    try {
+      await sellChick(id);
+      fetchChicks();
+    } catch (error) {
+      console.error('Failed to sell chick:', error);
+    }
   };
 
   useEffect(() => {
@@ -30,8 +42,8 @@ const ChicksPage = () => {
         {chicks.map((chick) => (
           <li key={chick.id}>
             🐣 น้ำหนัก: {chick.weight?.toFixed(2)} กก.
-            <button onClick={() => feedChick(chick.id)}>ให้อาหาร</button>
-            <button disabled={chick.weight < 3} onClick={() => sellChick(chick.id)}>ขาย</button>
+            <button onClick={() => handleFeed(chick.id)}>ให้อาหาร</button>
+            <button disabled={chick.weight < 3} onClick={() => handleSell(chick.id)}>ขาย</button>
           </li>
         ))}
       </ul>

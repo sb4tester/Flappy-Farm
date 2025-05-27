@@ -74,40 +74,52 @@ const updateUserProfile = (userData, token) =>
 
 // Farm APIs
 const getChickens = (token) => api.get('/farm/chickens', { headers: bearer(token) });
-const buyMother   = (data, token) => api.post('/farm/buy-mother', data, { headers: bearer(token) });
+const buyMother = (data, token) => api.post('/farm/buy-mother', data, { headers: bearer(token) });
 const feedChicken = (id, token) => api.post(`/farm/feed/${id}`, null, { headers: bearer(token) });
 const sellChicken = (id, token) => api.delete(`/farm/sell/${id}`, { headers: bearer(token) });
 
 // Wallet APIs
 const getBalance = (token) => api.get('/wallet/balance', { headers: bearer(token) });
-const deposit    = (data, token) => api.post('/wallet/deposit', data, { headers: bearer(token) });
-const withdraw   = (data, token) => api.post('/wallet/withdraw', data, { headers: bearer(token) });
+const deposit = (data, token) => api.post('/wallet/deposit', data, { headers: bearer(token) });
+const withdraw = (data, token) => api.post('/wallet/withdraw', data, { headers: bearer(token) });
 
 // Eggs APIs
-const getEggs  = (token) => api.get('/eggs', { headers: bearer(token) });
+const getEggs = (token) => api.get('/eggs', { headers: bearer(token) });
 const claimEgg = (token) => api.post('/eggs/claim', null, { headers: bearer(token) });
 const sellEggs = (data, token) => api.post('/eggs/sell', data, { headers: bearer(token) });
 
-// Food APIs (mock)
-const getFood = (token) => Promise.resolve({ data: { food: 0 } });
+// Food APIs
+const getFood = async (token) => {
+  const res = await getUserProfile(token);
+  return { data: { food: res.data.food } };
+};
 
-// Incubator / Chicks APIs
+const buyFood = (data, token) => api.post('/food/buy', data, { headers: bearer(token) });
+
+// Incubator APIs
+const getIncubators = (token) => api.get('/incubator/list', { headers: bearer(token) });
+const buyIncubator = (token) => api.post('/incubator/buy', {}, { headers: bearer(token) });
 const insertToIncubator = (data, token) => api.post('/incubator/insert', data, { headers: bearer(token) });
-const getChicks         = (token) => api.get('/chicks', { headers: bearer(token) });
-const feedChick         = (id, token) => api.post(`/chicks/feed/${id}`, null, { headers: bearer(token) });
-const sellChick         = (id, token) => api.post(`/chicks/sell/${id}`, null, { headers: bearer(token) });
+
+// Chicks APIs
+const getChicks = (token) => api.get('/chicks', { headers: bearer(token) });
+const feedChick = (id, token) => api.post(`/chicks/feed/${id}`, null, { headers: bearer(token) });
+const sellChick = (id, token) => api.post(`/chicks/sell/${id}`, null, { headers: bearer(token) });
 
 // Market APIs
 const listMarketOrders = (token) => api.get('/market/orders', { headers: bearer(token) });
-const sellToMarket     = (data, token) => api.post('/market/order', data, { headers: bearer(token) });
-const buyFromMarket    = (orderId, token) => api.post(`/market/fill/${orderId}`, null, { headers: bearer(token) });
+const sellToMarket = (data, token) => api.post('/market/order', data, { headers: bearer(token) });
+const buyFromMarket = (orderId, token) => api.post(`/market/fill/${orderId}`, null, { headers: bearer(token) });
 
 // Referral APIs
 const getReferralTree = (token) => api.get('/referral/tree', { headers: bearer(token) });
 
+// Promotions APIs
+const getPromotionStatistics = () => api.get('/promotions/statistics');
+const getMotherTierPrice = () => api.get('/promotions/mother-tier-price');
+
 // 🔧 Enhanced Auth Helper Functions
 const authAPI = {
-  // register user ใหม่
   register: async (user, referralCode = '') => {
     try {
       console.log('📝 Starting user registration...');
@@ -134,7 +146,6 @@ const authAPI = {
     }
   },
 
-  // login user เก่า
   login: async (user, referralCode = '') => {
     try {
       console.log('🔑 Starting user login...');
@@ -153,11 +164,10 @@ const authAPI = {
     }
   },
 
-  // social login/register
   socialAuth: async (user, referralCode = '', isNewUser = false) => {
     try {
       console.log(`🌐 Starting social auth... isNewUser: ${isNewUser}`);
-      const idToken = await user.getIdToken(true); // ✅ await token
+      const idToken = await user.getIdToken(true);
       console.log('🎫 Got ID token for social auth');
       let response; let authType;
       if (isNewUser) {
@@ -216,41 +226,29 @@ export {
   claimEgg,
   sellEggs,
 
-  // Utility functions
+  // Food functions
   getFood,
-  insertToIncubator,
-  getChicks,
-  feedChick,
-  sellChick,
-  listMarketOrders,
-  sellToMarket,
-  buyFromMarket,
-  getReferralTree
-};
+  buyFood,
 
-export default {
-  loginWithToken,
-  registerUser,
-  authAPI,
-  getUserProfile,
-  updateUserProfile,
-  getChickens,
-  buyMother,
-  feedChicken,
-  sellChicken,
-  getBalance,
-  deposit,
-  withdraw,
-  getEggs,
-  claimEgg,
-  sellEggs,
-  getFood,
+  // Incubator functions
+  getIncubators,
+  buyIncubator,
   insertToIncubator,
+
+  // Chicks functions
   getChicks,
   feedChick,
   sellChick,
+
+  // Market functions
   listMarketOrders,
   sellToMarket,
   buyFromMarket,
-  getReferralTree
+
+  // Referral functions
+  getReferralTree,
+
+  // Promotions functions
+  getPromotionStatistics,
+  getMotherTierPrice
 };

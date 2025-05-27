@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { getReferralTree } from '../services/api';
 
 const ReferralTree = () => {
   const [tree, setTree] = useState([]);
 
   useEffect(() => {
     const fetchTree = async () => {
-      const res = await axios.get('/referral/tree');
-      setTree(res.data.tree);
+      try {
+        const res = await getReferralTree();
+        setTree(res.data.tree);
+      } catch (error) {
+        console.error('Failed to fetch referral tree:', error);
+      }
     };
     fetchTree();
   }, []);

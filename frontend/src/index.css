@@ -20,14 +20,4 @@ body, html {
   z-index: -1;
 }
 
-.status-panel {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  font-size: 18px;
-  color: #fff;
-  text-shadow: 1px 1px 2px #000;
-}
+

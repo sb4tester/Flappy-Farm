@@ -6,10 +6,12 @@ require('dotenv').config(); // ← เพิ่ม dotenv
 const verifyToken = require('./middlewares/verifyToken');
 const farmController = require('./controllers/farmController');
 const eggsController = require('./controllers/eggsController');
-const incubatorController = require('./controllers/incubatorController');
 const marketController = require('./controllers/marketController');
 const financeController = require('./controllers/financeController');
 const referralController = require('./controllers/referralController');
+const promotionsRoutes = require('./routes/promotions');
+const foodRoutes = require('./routes/food');
+const incubatorRoutes = require('./routes/incubator');
 require('./cron/dailyJobs');
 
 const app = express();
@@ -28,9 +30,6 @@ app.post('/chickens/sell', verifyToken, farmController.sellChicken);
 app.get('/eggs', verifyToken, eggsController.getEggs);
 app.post('/eggs/sell', verifyToken, eggsController.sellEggs);
 
-app.post('/incubator/buy', verifyToken, incubatorController.buyIncubator);
-app.post('/incubator/hatch', verifyToken, incubatorController.hatchEggs);
-
 app.get('/market/orders', verifyToken, marketController.listOrders);
 app.post('/market/order', verifyToken, marketController.createOrder);
 app.post('/market/fill/:id', verifyToken, marketController.fillOrder);
@@ -45,6 +44,13 @@ app.use('/user', require('./routes/user'));
 // Wallet routes
 app.use('/wallet', require('./routes/wallet'));
 
+app.use('/promotions', promotionsRoutes);
+
+// Food routes
+app.use('/food', foodRoutes);
+
+// Incubator routes
+app.use('/incubator', incubatorRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
