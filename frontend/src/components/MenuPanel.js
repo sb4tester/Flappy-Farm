@@ -1,6 +1,6 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase';
 
 const MenuPanel = ({ onClose, onReferral }) => {
   const navigate = useNavigate();
@@ -22,7 +22,8 @@ const MenuPanel = ({ onClose, onReferral }) => {
           onClose();
           navigate('/shop');
         }}>Shop</button>
-        <button className="menu-btn" onClick={() => {
+        <button className="menu-btn" onClick={async () => {
+          await auth.signOut();
           localStorage.removeItem('token');
           window.location.href = '/login';
         }}>Logout</button>

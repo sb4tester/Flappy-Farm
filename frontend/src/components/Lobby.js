@@ -19,6 +19,7 @@ const Lobby = () => {
       const token = localStorage.getItem('token');
       if (!token) {
         console.error('No token found');
+        setIsLoading(false);
         return;
       }
       const response = await getIncubators(token);
@@ -37,12 +38,35 @@ const Lobby = () => {
     const token = localStorage.getItem('token');
     if (token) {
       fetchIncubators();
-      refreshData(); // Refresh game data when component mounts
+      refreshData();
+    } else {
+      setIsLoading(false);
     }
   }, []);
 
   const totalSlots = incubators.reduce((sum, inc) => sum + (inc.capacity || 0), 0);
   const usedSlots = incubators.reduce((sum, inc) => sum + (inc.usedSlots || 0), 0);
+
+  // ฟังก์ชันสำหรับตรวจสอบสถานะไก่
+  const getChickenStatus = (chicken) => {
+    if (!chicken.lastFed) return 'hungry'; // ยังไม่เคยให้อาหาร
+    const hoursSinceLastFed = (Date.now() - chicken.lastFed.toDate()) / (1000 * 60 * 60);
+    if (hoursSinceLastFed > 48) return 'dead'; // ไม่ได้ให้อาหารเกิน 48 ชั่วโมง
+    if (hoursSinceLastFed > 24) return 'hungry'; // ไม่ได้ให้อาหารเกิน 24 ชั่วโมง
+    return 'normal';
+  };
+
+  // ฟังก์ชันสำหรับเลือกรูปไก่ตามสถานะ
+  const getChickenImage = (status) => {
+    switch (status) {
+      case 'hungry':
+        return '/assets/images/chicken-hungry.png';
+      case 'dead':
+        return '/assets/images/chicken-dead.png';
+      default:
+        return '/assets/images/chicken-normal.png';
+    }
+  };
 
   if (isLoading) {
     return <div className="lobby loading">Loading...</div>;
@@ -73,6 +97,29 @@ const Lobby = () => {
         <div><img src="/assets/images/Food-250x250.png" width="40" alt="food" /> {food}</div>
         <div><img src="/assets/images/incubator.png" width="40" alt="incubators" /> {incubators.length} ({usedSlots}/{totalSlots})</div>
       </div>
+
+      {/* แสดงไก่ตรงกลางถ้ามีไก่ */}
+      {chickens.length > 0 && (
+        <div className="chicken-display">
+          {(() => {
+            const chicken = chickens[0];
+            const status = getChickenStatus(chicken);
+            return (
+              <div key={chicken.id} className="chicken-item">
+                <img 
+                  src={getChickenImage(status)} 
+                  alt={`Chicken ${status}`} 
+                  className={`chicken-image ${status}`}
+                />
+                <div className="chicken-status">
+                  {status === 'hungry' && 'หิว!'}
+                  {status === 'dead' && 'ตาย!'}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       <button className="feed-button" onClick={() => alert('ให้อาหาร')}>
         ให้อาหาร

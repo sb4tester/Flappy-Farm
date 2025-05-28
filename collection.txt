@@ -1,0 +1,160 @@
+1. Users Collection
+
+Structure :
+{
+  "users": {
+    "userId1": {
+      "coin_balance": 1000,
+      "commission_balance":50,
+      "referrer": "userId2",
+      "email": "userId2@gmail.com",
+      "displayName ": "userId2",
+      "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocLeJEPPXzFGuh1kW2_yaH6pbTb9tDjmxDOBVkGfAXkfvLWd=s96-c",
+      "food": 3000,
+      "chickens": {
+        "chickenId1": {
+          "type": "mother",
+          "birthDate": "2024-03-20T00:00:00.000Z",
+          "lastFed": "2024-03-21T00:00:00.000Z",
+          "weight": 1.5,
+          "status": "alive",
+          "specialSale": false
+        }
+      },
+      "eggs": {
+        "eggId1": {
+          "type": "normal",
+          "createdAt": "2024-03-21T00:00:00.000Z"
+        }
+      },
+      "incubators": {
+        "incubatorId1": {
+          "purchasedAt": "2024-03-20T00:00:00.000Z",
+          "usedSlots": 2
+        }
+      }
+    }
+  }
+}
+
+1.1 users (Collection หลัก) :
+{
+  "userId": {
+    "coin_balance": "number",
+    "commission_balance": "number",
+    "referrer": "string (optional)",    
+    "email": "string", 
+    "displayName ": "string (optional)", ,
+    "photoURL": "string (optional)", ,
+    "food": "number",
+  }
+}
+
+1.2 chickens (Sub-collection) users/{userId}/chickens/{chickenId}:
+{
+  "chickenId": {
+    "type": "mother",                  // mother | chick
+    "birthDate": Timestamp,
+    "lastFed":   Timestamp,
+    "weight":    1.5,
+    "status":    "alive",              // alive | dead
+    "specialSale": false               // true ถ้าอยู่ในโปร “ขายพิเศษ”
+  }
+}
+
+1.3 eggs (Sub-collection) users/{userId}/eggs/{eggId}:
+{
+  "eggId": {
+    "type":      "normal",             // normal | bronze | silver | gold
+    "createdAt": Timestamp
+  }
+}
+
+1.4 incubators (Sub-collection) users/{userId}/incubators/{incubatorId}:
+{
+  "incubatorId": {
+    "purchasedAt": Timestamp,
+    "capacity":    5,                  // slot ทั้งหมด
+    "usedSlots":   2,                  // กำลังฟักกี่ฟอง
+    "eggs": [                          // ถ้ามีข้อมูล eggId & hatchAt
+        { "eggId": "egg123", "hatchAt": Timestamp }
+    ]
+  }
+}
+
+1.5 transactions (Sub-collection) users/{userId}/transactions/{txId}:
+{
+  "txId": {
+    "type":      "deposit",            // deposit | withdraw | buyMother | feed | sellChicken | sellEgg | rentIncubator | hatch
+    "amount":    150,                  // จำนวน Coin (ลบได้ถ้าถอนหรือซื้อ)
+    "metadata":  {                     // รายละเอียดเพิ่มเติม
+        "usdtAmount": 1000,
+        "bonusPercent": 5,
+        "chickenId": "c123",
+        // …
+    },
+    "createdAt": Timestamp
+  }
+}
+
+1.6 commissions (Sub-collection) users/{userId}/commissions/{commissionId}:
+{
+  "commissionId": {
+    "fromUser":  "referrerId",
+    "level":     1,                    // 1–5
+    "amount":    20,                   // Coin ที่ได้
+    "baseType":  "deposit",            // deposit | buy | …
+    "createdAt": Timestamp
+  }
+}
+
+2 marketOrders/{orderId} :
+{
+    "orderId" : {
+        "userId":    "user123",
+        "side":      "buy",                // buy | sell
+        "item":      "chicken",            // chicken | egg
+        "eggType":   null,                 // ถ้า item=egg ระบุประเภท
+        "weight":    null,                 // ถ้า item=chicken ระบุกิโลกรัม
+        "quantity":  10,                   // จำนวนไก่หรือไข่
+        "price":     7,                    // Coin หรือ USDT
+        "status":    "open",               // open | filled | cancelled
+        "createdAt": Timestamp,
+        "filledAt":  null
+    }
+
+}
+
+3. promotions/{promoId}
+{
+    "depositBonus" : {
+        "type": "depositBonus",
+        "tiers": [
+            { "minUsdt": 1000,   "bonusPercent":  5 },
+            { "minUsdt": 10000,  "bonusPercent": 10 },
+            { "minUsdt": 100000, "bonusPercent": 15 }
+        ]
+    },
+    "motherTierPrice":{
+        "type": "motherTierPrice",
+        "tiers": [
+            { "minId": 1,       "maxId":100000,  "priceUsd": 10 },
+            { "minId":100001,   "maxId":200000,  "priceUsd": 20 },
+            // …
+            { "minId":800001,   "maxId":1000000, "priceUsd": 80 }
+        ]
+    },
+    "eggRarity": {
+        "type": "eggRarity",
+        "tiers": [
+            { "type":"bronze", "chanceIfSpend":300, "total":1000, "price":10 },
+            { "type":"silver", "chanceIfSpend":1000,"total": 100, "price":100 },
+            { "type":"gold",   "chanceIfSpend":3000,"total":  10, "price":1000 }
+        ]
+    },
+    "statistics":{
+        "totalChickenPurchase ": number
+    }
+
+
+}
