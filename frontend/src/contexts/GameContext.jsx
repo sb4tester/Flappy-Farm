@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import {
   getBalance,
   getChickens,
@@ -7,6 +7,15 @@ import {
 } from '../services/api';
 
 export const GameContext = createContext();
+
+// Custom hook for using game context
+export const useGame = () => {
+  const context = useContext(GameContext);
+  if (!context) {
+    throw new Error('useGame must be used within a GameProvider');
+  }
+  return context;
+};
 
 export default function GameProvider({ children }) {
   const [coins, setCoins] = useState(0);

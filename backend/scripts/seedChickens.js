@@ -10,7 +10,8 @@ async function seed() {
       birthDate: admin.firestore.Timestamp.fromDate(new Date('2025-01-01')),
       lastFed: admin.firestore.Timestamp.fromDate(new Date()),
       weight: 1.5,
-      status: 'alive'
+      status: 'alive',
+      specialSale: false
     }
   ];
   const batch = db.batch();

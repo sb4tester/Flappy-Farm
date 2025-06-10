@@ -75,7 +75,7 @@ const updateUserProfile = (userData, token) =>
 // Farm APIs
 const getChickens = (token) => api.get('/farm/chickens', { headers: bearer(token) });
 const buyMother = (data, token) => api.post('/farm/buy-mother', data, { headers: bearer(token) });
-const feedChicken = (id, token) => api.post(`/farm/feed/${id}`, null, { headers: bearer(token) });
+const feedChicken = (id, token) => api.post(`/farm/feed/${id}`, {}, { headers: bearer(token) });
 const sellChicken = (id, token) => api.delete(`/farm/sell/${id}`, { headers: bearer(token) });
 
 // Wallet APIs

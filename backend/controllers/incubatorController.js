@@ -90,10 +90,11 @@ const hatchEggs = async (req, res) => {
     const newChickRef = userRef.collection('chickens').doc();
     batch.set(newChickRef, {
       type: 'chick',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      birthDate: admin.firestore.Timestamp.now(),
       lastFed: null,
-      feedStreak: 0,
-      weight: 0.5
+      weight: 0.5,
+      status: 'alive',
+      specialSale: false
     });
   });
   // update incubator usedSlots

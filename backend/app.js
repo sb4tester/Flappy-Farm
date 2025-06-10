@@ -2,6 +2,8 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config(); // ← เพิ่ม dotenv
+const admin = require('firebase-admin');
+const farmRoutes = require('./routes/farm');
 
 const verifyToken = require('./middlewares/verifyToken');
 const farmController = require('./controllers/farmController');
@@ -51,6 +53,9 @@ app.use('/food', foodRoutes);
 
 // Incubator routes
 app.use('/incubator', incubatorRoutes);
+
+// Routes
+app.use('/api/farm', farmRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ShopPanel from './ShopPanel';
 import { GameContext } from '../contexts/GameContext';
 import './Lobby.css';
@@ -7,6 +8,7 @@ import ReferralDialog from './ReferralDialog';
 import { getIncubators } from '../services/api';
 
 const Lobby = () => {
+  const navigate = useNavigate();
   const [showReferral, setShowReferral] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -50,7 +52,7 @@ const Lobby = () => {
   // ฟังก์ชันสำหรับตรวจสอบสถานะไก่
   const getChickenStatus = (chicken) => {
     if (!chicken.lastFed) return 'hungry'; // ยังไม่เคยให้อาหาร
-    const hoursSinceLastFed = (Date.now() - chicken.lastFed.toDate()) / (1000 * 60 * 60);
+    const hoursSinceLastFed = (Date.now() - new Date(chicken.lastFed)) / (1000 * 60 * 60);
     if (hoursSinceLastFed > 48) return 'dead'; // ไม่ได้ให้อาหารเกิน 48 ชั่วโมง
     if (hoursSinceLastFed > 24) return 'hungry'; // ไม่ได้ให้อาหารเกิน 24 ชั่วโมง
     return 'normal';
@@ -121,7 +123,7 @@ const Lobby = () => {
         </div>
       )}
 
-      <button className="feed-button" onClick={() => alert('ให้อาหาร')}>
+      <button className="feed-button" onClick={() => navigate('/farm')}>
         ให้อาหาร
       </button>
 

@@ -7,13 +7,22 @@ module.exports = {
     const snapshot = await db.collection('users').doc(userId).collection('chickens').get();
     return snapshot.docs.map(doc => {
       const d = doc.data();
+      const birthDate = d.birthDate.toDate();
+      const now = new Date();
+      const ageInDays = Math.floor((now - birthDate) / (1000 * 60 * 60 * 24));
+      
       return {
         id: doc.id,
         type: d.type,
-        birthDate: d.birthDate.toDate().toISOString().split('T')[0],
-        lastFed: d.lastFed.toDate().toISOString().split('T')[0],
+        birthDate: birthDate.toISOString().split('T')[0],
+        lastFed: d.lastFed ? d.lastFed.toDate().toISOString().split('T')[0] : null,
         weight: d.weight,
         status: d.status,
+        ageInDays,
+        specialSale: d.specialSale || false,
+        feedCount: d.feedCount || 0,
+        canLayEgg: d.canLayEgg || false,
+        eggs: d.eggs || 0
       };
     });
   },
@@ -28,9 +37,13 @@ module.exports = {
       batch.set(ref, {
         type: 'mother',
         birthDate: now,
-        lastFed: now,
-        weight: 0,
+        lastFed: null,
+        weight: 1.0,
         status: 'alive',
+        specialSale: false,
+        feedCount: 0,
+        canLayEgg: false,
+        eggs: 0
       });
     }
     await batch.commit();
