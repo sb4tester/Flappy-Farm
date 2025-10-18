@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { getFarmStatus, feedMultipleChickens, collectAllEggs, buyFoodRedux } from '../../services/api';
 
 // Action Types
 export const GET_FARM_STATUS = 'GET_FARM_STATUS';
@@ -9,21 +9,14 @@ export const SET_ERROR = 'SET_ERROR';
 export const SET_LOADING = 'SET_LOADING';
 
 // Action Creators
-export const getFarmStatus = () => async (dispatch) => {
+export const getFarmStatusAction = () => async (dispatch) => {
   try {
     dispatch({ type: SET_LOADING, payload: true });
-    const [chickensRes, walletRes] = await Promise.all([
-      axios.get('/farm/chickens'),
-      axios.get('/wallet/balance')
-    ]);
-    
+    const token = localStorage.getItem('token');
+    const data = await getFarmStatus(token);
     dispatch({
       type: GET_FARM_STATUS,
-      payload: {
-        chickens: chickensRes.data,
-        coinBalance: walletRes.data.balance,
-        food: walletRes.data.food
-      }
+      payload: data
     });
   } catch (error) {
     console.error('Error getting farm status:', error);
@@ -36,16 +29,16 @@ export const getFarmStatus = () => async (dispatch) => {
   }
 };
 
-export const feedMultipleChickens = (chickenIds) => async (dispatch) => {
+export const feedMultipleChickensAction = (chickenIds) => async (dispatch) => {
   try {
     dispatch({ type: SET_LOADING, payload: true });
-    const response = await axios.post('/farm/feed-multiple', { chickenIds });
+    const token = localStorage.getItem('token');
+    const response = await feedMultipleChickens(chickenIds, token);
     dispatch({
       type: FEED_MULTIPLE_CHICKENS,
       payload: response.data
     });
-    // รีเฟรชสถานะฟาร์มหลังจากให้อาหาร
-    dispatch(getFarmStatus());
+    dispatch(getFarmStatusAction());
   } catch (error) {
     console.error('Error feeding chickens:', error);
     dispatch({ 
@@ -57,16 +50,16 @@ export const feedMultipleChickens = (chickenIds) => async (dispatch) => {
   }
 };
 
-export const collectAllEggs = () => async (dispatch) => {
+export const collectAllEggsAction = () => async (dispatch) => {
   try {
     dispatch({ type: SET_LOADING, payload: true });
-    const response = await axios.post('/farm/collect-eggs');
+    const token = localStorage.getItem('token');
+    const response = await collectAllEggs(token);
     dispatch({
       type: COLLECT_ALL_EGGS,
       payload: response.data
     });
-    // รีเฟรชสถานะฟาร์มหลังจากเก็บไข่
-    dispatch(getFarmStatus());
+    dispatch(getFarmStatusAction());
   } catch (error) {
     console.error('Error collecting eggs:', error);
     dispatch({ 
@@ -78,16 +71,16 @@ export const collectAllEggs = () => async (dispatch) => {
   }
 };
 
-export const buyFood = (amount) => async (dispatch) => {
+export const buyFoodAction = (amount) => async (dispatch) => {
   try {
     dispatch({ type: SET_LOADING, payload: true });
-    const response = await axios.post('/farm/buy-food', { amount });
+    const token = localStorage.getItem('token');
+    const response = await buyFoodRedux(amount, token);
     dispatch({
       type: BUY_FOOD,
       payload: response.data
     });
-    // รีเฟรชสถานะฟาร์มหลังจากซื้ออาหาร
-    dispatch(getFarmStatus());
+    dispatch(getFarmStatusAction());
   } catch (error) {
     console.error('Error buying food:', error);
     dispatch({ 

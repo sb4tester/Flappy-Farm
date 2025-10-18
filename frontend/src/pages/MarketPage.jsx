@@ -1,1 +1,0 @@
-import React from 'react'; export default () => <h1>Market Page</h1>;

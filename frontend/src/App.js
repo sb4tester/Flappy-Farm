@@ -9,15 +9,14 @@ import GameProvider from './contexts/GameContext';
 import RegisterLogin from './components/RegisterLogin/RegisterLogin';
 import Lobby from './components/Lobby';
 import FarmPage from './pages/FarmPage';
-import EggsPage from './pages/EggsPage';
 import IncubatorPage from './pages/IncubatorPage';
-import MarketPage from './pages/MarketPage';
-import PromotionsPage from './pages/PromotionsPage';
-import ReferralTreePage from './pages/ReferralTreePage';
 import ShopPage from './pages/ShopPage';
-import ChicksPage from './pages/ChicksPage';
 import MyEggsPage from './pages/MyEggsPage';
 import ReferralPage from './pages/ReferralPage';
+import SellPage from './pages/SellPage';
+import SettingsPage from './pages/SettingsPage';
+
+import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
 function AuthGuard() {
@@ -47,26 +46,25 @@ function AuthGuard() {
 export default function App() {
   return (
     <Provider store={store}>
-      <GameProvider>
-        <Router>
-          <AuthGuard /> {/* ตรวจสอบสถานะ login ทุกหน้า */}
-          <Routes>
-            <Route path="/" element={<Lobby />} />
-            <Route path="/login" element={<RegisterLogin />} />
-            <Route path="/register" element={<RegisterLogin />} />
-            <Route path="/farm" element={<FarmPage />} />
-            <Route path="/eggs" element={<EggsPage />} />
-            <Route path="/incubator" element={<IncubatorPage />} />
-            <Route path="/market" element={<MarketPage />} />
-            <Route path="/promotions" element={<PromotionsPage />} />
-            <Route path="/referrals" element={<ReferralTreePage />} />
-            <Route path="/chicks" element={<ChicksPage />} />
-            <Route path="/shop" element={<ShopPage />} />
-            <Route path="/my-eggs" element={<MyEggsPage />} />
-            <Route path="/referral" element={<ReferralPage />} />
-          </Routes>
-        </Router>
-      </GameProvider>
+      <AuthProvider>
+        <GameProvider>
+          <Router>
+            <AuthGuard /> {/* ตรวจสอบสถานะ login ทุกหน้า */}
+            <Routes>
+              <Route path="/" element={<Lobby />} />
+              <Route path="/login" element={<RegisterLogin />} />
+              <Route path="/register" element={<RegisterLogin />} />
+              <Route path="/farm" element={<FarmPage />} />
+              <Route path="/incubator" element={<IncubatorPage />} />
+              <Route path="/shop" element={<ShopPage />} />
+              <Route path="/my-eggs" element={<MyEggsPage />} />
+              <Route path="/referral" element={<ReferralPage />} />
+              <Route path="/market" element={<SellPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </Router>
+        </GameProvider>
+      </AuthProvider>
     </Provider>
   );
 } 

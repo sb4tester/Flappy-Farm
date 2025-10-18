@@ -75,8 +75,31 @@ const updateUserProfile = (userData, token) =>
 // Farm APIs
 const getChickens = (token) => api.get('/farm/chickens', { headers: bearer(token) });
 const buyMother = (data, token) => api.post('/farm/buy-mother', data, { headers: bearer(token) });
-const feedChicken = (id, token) => api.post(`/farm/feed/${id}`, {}, { headers: bearer(token) });
-const sellChicken = (id, token) => api.delete(`/farm/sell/${id}`, { headers: bearer(token) });
+const feedChicken = async (id, token) => {
+  const response = await api.post(`/farm/feed/${id}`, {}, { headers: bearer(token) });
+  // โหลดข้อมูลไก่ใหม่หลังจากให้อาหาร
+  const chickensResponse = await getChickens(token);
+  return { ...response, chickens: chickensResponse.data.chickens };
+};
+const feedMultipleChickens = async (chickenIds, token) => {
+  const response = await api.post('/api/farm/feed-multiple', { chickenIds }, {
+    headers: bearer(token)
+  });
+
+  const chickensResponse = await getChickens(token);
+  return { ...response, chickens: chickensResponse.data.chickens };
+}
+
+const sellChickensToSystem = async (quantity, token) => {
+  const response = await api.post('/api/farm/sell?type=system', { quantity }, {
+    headers: bearer(token)
+  });
+
+  const chickensResponse = await getChickens(token);
+  return { ...response, chickens: chickensResponse.data.chickens };
+};
+
+
 
 // Wallet APIs
 const getBalance = (token) => api.get('/wallet/balance', { headers: bearer(token) });
@@ -108,8 +131,7 @@ const sellChick = (id, token) => api.post(`/chicks/sell/${id}`, null, { headers:
 
 // Market APIs
 const listMarketOrders = (token) => api.get('/market/orders', { headers: bearer(token) });
-const sellToMarket = (data, token) => api.post('/market/order', data, { headers: bearer(token) });
-const buyFromMarket = (orderId, token) => api.post(`/market/fill/${orderId}`, null, { headers: bearer(token) });
+const sellToMarket = (chickenId, price, token) => api.post(`/api/market/chicken/${chickenId}/list`, { price }, { headers: bearer(token) });
 
 // Referral APIs
 const getReferralTree = (token) => api.get('/referral/tree', { headers: bearer(token) });
@@ -117,6 +139,47 @@ const getReferralTree = (token) => api.get('/referral/tree', { headers: bearer(t
 // Promotions APIs
 const getPromotionStatistics = () => api.get('/promotions/statistics');
 const getMotherTierPrice = () => api.get('/promotions/mother-tier-price');
+
+// Farm Redux APIs
+const getFarmStatus = async (token) => {
+  const [chickensRes, walletRes] = await Promise.all([
+    api.get('/farm/chickens', { headers: bearer(token) }),
+    api.get('/wallet/balance', { headers: bearer(token) })
+  ]);
+  return {
+    chickens: chickensRes.data,
+    coinBalance: walletRes.data.balance,
+    food: walletRes.data.food
+  };
+};
+/*
+const feedMultipleChickens = (chickenIds, token) =>
+  api.post('/farm/feed-multiple', { chickenIds }, { headers: bearer(token) });
+*/
+
+const collectAllEggs = (token) =>
+  api.post('/farm/collect-eggs', {}, { headers: bearer(token) });
+
+const buyFoodRedux = (amount, token) =>
+  api.post('/farm/buy-food', { amount }, { headers: bearer(token) });
+
+// Market functions
+const buyFromMarket = (orderId, token) => {
+  return api.post(`/api/market/chicken/${orderId}/buy`, null, { headers: bearer(token) });
+};
+
+const cancelChickenListing = (orderId, token) => {
+  return api.delete(`/api/market/chicken/${orderId}/cancel`, { headers: bearer(token) });
+};
+
+const getUserSettings = (token) => {
+  return api.get('/user/settings', { headers: bearer(token) });
+};
+
+const updateUserSettings = (data, token) => {
+  return api.post('/user/settings', data, { headers: bearer(token) });
+};
+
 
 // 🔧 Enhanced Auth Helper Functions
 const authAPI = {
@@ -209,12 +272,15 @@ export {
   // User functions
   getUserProfile,
   updateUserProfile,
+  getUserSettings,        // 👈 เพิ่มตรงนี้
+  updateUserSettings,     // 👈 เพิ่มตรงนี้
 
   // Farm functions
   getChickens,
   buyMother,
   feedChicken,
-  sellChicken,
+  feedMultipleChickens,
+  sellChickensToSystem,
 
   // Wallet functions
   getBalance,
@@ -244,11 +310,17 @@ export {
   listMarketOrders,
   sellToMarket,
   buyFromMarket,
+  cancelChickenListing,
 
   // Referral functions
   getReferralTree,
 
   // Promotions functions
   getPromotionStatistics,
-  getMotherTierPrice
+  getMotherTierPrice,
+
+  // Farm Redux functions
+  getFarmStatus,  
+  collectAllEggs,
+  buyFoodRedux
 };

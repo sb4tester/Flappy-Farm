@@ -37,6 +37,7 @@ export default function GameProvider({ children }) {
 
       setCoins(balanceRes.data.coin_balance || 0);  
       setChickens(chickensRes.data.chickens || []);
+      console.log('DEBUG: Chickens state after setChickens in GameContext:', chickensRes.data.chickens);
       setEggs(eggsRes.data.eggs || []);
       setFood(foodsRes.data.food || 0);
     } catch (error) {

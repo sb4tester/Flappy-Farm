@@ -14,14 +14,18 @@ const MenuPanel = ({ onClose, onReferral }) => {
       </div>
 
       <div className="menu-items">
-        <button className="menu-btn">Wallet</button>
-        <button className="menu-btn">Notice/News <span className="badge">5</span></button>
-        <button className="menu-btn">เพื่อน</button>
+        <button className="menu-btn" onClick={() => {
+          onClose();
+          navigate('/settings');
+        }}>Setting</button>
+
         <button className="menu-btn" onClick={() => { onClose(); onReferral(); }}>แนะนำ</button>
+
         <button className="menu-btn" onClick={() => {
           onClose();
           navigate('/shop');
         }}>Shop</button>
+
         <button className="menu-btn" onClick={async () => {
           await auth.signOut();
           localStorage.removeItem('token');

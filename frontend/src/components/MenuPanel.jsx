@@ -1,1 +1,0 @@
-import React from 'react'; export default ({onClose, onReferral}) => <div><button onClick={onClose}>Close</button><button onClick={onReferral}>Referral</button></div>;

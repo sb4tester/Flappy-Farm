@@ -80,7 +80,7 @@ const Lobby = () => {
 
       <div className="header">
         <div className="left">
-          <img src="/assets/images/coin-250x250.png" alt="coin" />
+          <img src="/assets/images/coin.png" alt="coin" />
           <span>{(coins ?? 0).toLocaleString()}</span>
         </div>
         <div className="right">
@@ -94,11 +94,13 @@ const Lobby = () => {
       </div>
 
       <div className="status-panel">        
-        <div><img src="/assets/images/profile.png" width="40" alt="chickens" /> {chickens.length}</div>
-        <div><img src="/assets/images/Egg.png" width="40" alt="eggs" /> {eggs.length}</div>
-        <div><img src="/assets/images/Food-250x250.png" width="40" alt="food" /> {food}</div>
+        <div><img src="/assets/images/chicken.png" width="40" alt="chickens" /> {chickens.length}</div>
+        <div><img src="/assets/images/egg.png" width="40" alt="eggs" /> {eggs.length}</div>
+        <div><img src="/assets/images/food.png" width="40" alt="food" /> {food}</div>
+        {/*}
         <div><img src="/assets/images/incubator.png" width="40" alt="incubators" /> {incubators.length} ({usedSlots}/{totalSlots})</div>
-      </div>
+      */}
+        </div>
 
       {/* แสดงไก่ตรงกลางถ้ามีไก่ */}
       {chickens.length > 0 && (
