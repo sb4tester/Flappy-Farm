@@ -15,6 +15,7 @@ import MyEggsPage from './pages/MyEggsPage';
 import ReferralPage from './pages/ReferralPage';
 import SellPage from './pages/SellPage';
 import SettingsPage from './pages/SettingsPage';
+import DepositPage from './pages/DepositPage';
 
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
@@ -61,6 +62,7 @@ export default function App() {
               <Route path="/referral" element={<ReferralPage />} />
               <Route path="/market" element={<SellPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/deposit" element={<DepositPage />} />
             </Routes>
           </Router>
         </GameProvider>

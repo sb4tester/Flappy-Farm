@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { getUserSettings, updateUserSettings } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import { auth } from '../firebase';
 
 const PageContainer = styled.div`
   display: flex;
@@ -136,6 +137,16 @@ export default function SettingsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    // Refresh Firebase ID token to avoid 401 from expired/invalid token
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const fresh = await user.getIdToken(true);
+        localStorage.setItem('token', fresh);
+      }
+    } catch (e1) {
+      console.warn('Failed to refresh token before saving settings:', e1);
+    }
     const token = localStorage.getItem('token');
     try {
       await updateUserSettings(form, token);
@@ -151,7 +162,11 @@ export default function SettingsPage() {
     <PageContainer>
       <Header>
         <HeaderRow>
-          <BackButton onClick={() => navigate('/')}>{'<'} Lobby</BackButton>
+          <BackButton onClick={() => navigate('/')}><img
+    src="/assets/images/back-250x250.png"
+    alt="food"
+    style={{ width: '20px', height: 'auto', objectFit: 'contain' }}
+  /> Lobby</BackButton>
         </HeaderRow>
         <Title>🛠 ตั้งค่าฟาร์มของคุณ</Title>
       </Header>

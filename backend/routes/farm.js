@@ -1,14 +1,42 @@
 const express = require('express');
 const router = express.Router();
-const { getChickens, buyMother, feedChicken, sellChicken, checkChickenAge } = require('../controllers/farmController');
+const verifyToken = require('../middlewares/verifyToken');
+const {
+  getChickens,
+  buyMother,
+  feedChicken,
+  feedMultipleChickens,
+  sellChicken,
+  checkChickenAge,
+  getChickenCost
+} = require('../controllers/farmController');
 const admin = require('firebase-admin');
 const db = admin.firestore();
 
-router.get('/chickens', getChickens);
-router.post('/buy-mother', buyMother);
-router.post('/feed/:id', feedChicken);
-router.post('/sell', sellChicken);
-router.post('/check-age', checkChickenAge);
+// ตรวจว่าฟังก์ชันไม่ undefined
+console.log('FarmController:', { getChickens, buyMother, feedChicken, feedMultipleChickens, sellChicken, checkChickenAge, getChickenCost });
+
+// Get chickens route
+router.get('/chickens', verifyToken, getChickens);
+
+// Buy mother chicken route
+router.post('/buy-mother', verifyToken, buyMother);
+
+// Feed chicken route
+router.post('/feed/:chickenId', verifyToken, feedChicken);
+
+// Cost routes
+router.get('/chicken/:chickenId/cost', verifyToken, getChickenCost);
+
+// Sell chicken route
+router.post('/sell', verifyToken, (req, res, next) => {
+  console.log('DEBUG: POST /api/farm/sell quantity=', req.body.quantity, 'type=', req.query.type);
+  next();
+}, sellChicken);
+
+
+// Check chicken age route
+router.get('/check-age', verifyToken, checkChickenAge);
 
 // GET /farm/status - ดึงข้อมูลสรุปฟาร์ม
 router.get('/status', async (req, res) => {
@@ -59,53 +87,9 @@ router.get('/status', async (req, res) => {
   }
 });
 
+
 // POST /farm/feed-multiple - ให้อาหารไก่หลายตัว
-router.post('/feed-multiple', async (req, res) => {
-  try {
-    const userId = req.user.uid;
-    const { chickenIds } = req.body;
-    
-    if (!Array.isArray(chickenIds)) {
-      return res.status(400).json({ error: 'Invalid chicken IDs' });
-    }
-
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-    
-    if (!userDoc.exists) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const userData = userDoc.data();
-    const foodRequired = chickenIds.length * 10; // 10 หน่วยต่อไก่
-
-    if (userData.food < foodRequired) {
-      return res.status(400).json({ error: 'Not enough food' });
-    }
-
-    const batch = db.batch();
-    
-    // อัพเดทอาหารของผู้ใช้
-    batch.update(userRef, {
-      food: admin.firestore.FieldValue.increment(-foodRequired)
-    });
-
-    // อัพเดทสถานะไก่แต่ละตัว
-    for (const chickenId of chickenIds) {
-      const chickenRef = userRef.collection('chickens').doc(chickenId);
-      batch.update(chickenRef, {
-        lastFed: admin.firestore.FieldValue.serverTimestamp(),
-        status: 'full'
-      });
-    }
-
-    await batch.commit();
-    res.json({ message: 'Chickens fed successfully' });
-  } catch (error) {
-    console.error('Error feeding chickens:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+router.post('/feed-multiple', verifyToken, feedMultipleChickens);
 
 // POST /farm/collect-eggs - เก็บไข่ทั้งหมด
 router.post('/collect-eggs', async (req, res) => {

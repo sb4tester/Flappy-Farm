@@ -380,6 +380,58 @@ const ShopPage = () => {
         <PageHeader>ร้านค้า</PageHeader>
       </HeaderWrapper>
       <ShopContent>
+        {/* Individual Chicken Purchase */}
+<div className="shop-item" style={{ width: '100%', marginTop: '20px' }}>
+  <h3>ซื้อแม่ไก่ตามจำนวน</h3>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      <QuantityInput
+        type="number"
+        min="1"
+        value={chickenQuantity}
+        onChange={(e) => setChickenQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+      />
+      <span>ตัว</span>
+    </div>
+    <div style={{ fontSize: '15px', color: '#555' }}>
+      ราคารวม: {currentTier ? (currentTier.priceUsd * chickenQuantity).toLocaleString() : 0} coin
+    </div>
+    <BuyButton 
+      onClick={() => handleBuyChicken()}
+      disabled={!currentTier}
+      style={{ width: '100%' }}
+    >
+      {currentTier ? `${currentTier.priceUsd * chickenQuantity} coin` : 'ไม่สามารถซื้อได้'}
+    </BuyButton>
+  </div>
+</div>
+
+       {/* Individual Food Purchase */}
+<div className="shop-item" style={{ width: '100%', marginTop: '20px' }}>
+  <h3>ซื้ออาหารตามจำนวน</h3>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      <QuantityInput
+        type="number"
+        min="1"
+        value={foodQuantity}
+        onChange={(e) => setFoodQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+      />
+      <span>ชุด (30 หน่วย/ชุด)</span>
+    </div>
+    <div style={{ fontSize: '15px', color: '#555' }}>
+      ราคารวม: {(FOOD_PRICE * foodQuantity).toLocaleString()} coin
+    </div>
+    <BuyButton 
+      onClick={() => handleBuyFood()}
+      disabled={isBuyingFood}
+      style={{ width: '100%' }}
+    >
+      {isBuyingFood ? 'กำลังซื้อ...' : `${FOOD_PRICE * foodQuantity} coin`}
+    </BuyButton>
+  </div>
+</div>
+
         {/* Chicken Packages */}
         <h3 style={{ marginTop: '20px' }}>แพ็คเกจแม่ไก่</h3>
         <PackageContainer>
@@ -420,31 +472,7 @@ const ShopPage = () => {
           </PackageCard>
         </PackageContainer>
 
-        {/* Individual Chicken Purchase */}
-        <div className="shop-item" style={{ width: '100%', marginTop: '20px' }}>
-  <h3>ซื้อแม่ไก่ตามจำนวน</h3>
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
-    <div style={{ display: 'flex', alignItems: 'center' }}>
-      <QuantityInput
-        type="number"
-        min="1"
-        value={chickenQuantity}
-        onChange={(e) => setChickenQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-      />
-      <span>ตัว</span>
-    </div>
-    <div style={{ fontSize: '15px', color: '#555' }}>
-      ราคารวม: {currentTier ? (currentTier.priceUsd * chickenQuantity).toLocaleString() : 0} coin
-    </div>
-    <BuyButton 
-      onClick={() => handleBuyChicken()}
-      disabled={!currentTier}
-      style={{ width: '100%' }}
-    >
-      {currentTier ? `${currentTier.priceUsd * chickenQuantity} coin` : 'ไม่สามารถซื้อได้'}
-    </BuyButton>
-  </div>
-</div>
+
 
 
         {/* Food Packages */}
@@ -503,31 +531,7 @@ const ShopPage = () => {
           </PackageCard>
         </PackageContainer>
 
-        {/* Individual Food Purchase */}
-        <div className="shop-item" style={{ width: '100%', marginTop: '20px' }}>
-  <h3>ซื้ออาหารตามจำนวน</h3>
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
-    <div style={{ display: 'flex', alignItems: 'center' }}>
-      <QuantityInput
-        type="number"
-        min="1"
-        value={foodQuantity}
-        onChange={(e) => setFoodQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-      />
-      <span>ชุด (30 หน่วย/ชุด)</span>
-    </div>
-    <div style={{ fontSize: '15px', color: '#555' }}>
-      ราคารวม: {(FOOD_PRICE * foodQuantity).toLocaleString()} coin
-    </div>
-    <BuyButton 
-      onClick={() => handleBuyFood()}
-      disabled={isBuyingFood}
-      style={{ width: '100%' }}
-    >
-      {isBuyingFood ? 'กำลังซื้อ...' : `${FOOD_PRICE * foodQuantity} coin`}
-    </BuyButton>
-  </div>
-</div>
+ 
 
 
         {/* Incubator 

@@ -15,6 +15,13 @@ exports.deposit = async (req, res) => {
   const coins = Math.floor(amount * (1 + tier.bonus/100));
   const userRef = db.collection('users').doc(uid);
   await userRef.update({ coin_balance: admin.firestore.FieldValue.increment(coins) });
+  // Record transaction so it appears in Deposit history
+  await userRef.collection('transactions').add({
+    type: 'deposit',
+    amount: coins,
+    metadata: { usdtAmount: amount, bonusPercent: tier.bonus || 0, channel: 'finance.deposit' },
+    createdAt: admin.firestore.Timestamp.now()
+  });
   // distribute referral commission
   await distributeCommission(uid, amount);
   res.json({ success: true, coins });

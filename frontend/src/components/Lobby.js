@@ -76,12 +76,19 @@ const Lobby = () => {
 
   return (
     <div className="lobby">
-      <img src="/assets/images/background.jpg" alt="background" className="background-img" />
+      <img src="/assets/images/Out-002.png" alt="background" className="background-img" />
 
       <div className="header">
         <div className="left">
           <img src="/assets/images/coin.png" alt="coin" />
-          <span>{(coins ?? 0).toLocaleString()}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>{(coins ?? 0).toLocaleString()}
+            <img
+              src="/assets/images/edit.png"
+              alt="Deposit"
+              onClick={() => navigate('/deposit')}
+              style={{ width: '20px', height: 'auto', objectFit: 'contain', cursor: 'pointer' }}
+            />
+          </span>
         </div>
         <div className="right">
           <button onClick={() => alert('Toggle Sound')}>
@@ -110,6 +117,7 @@ const Lobby = () => {
             const status = getChickenStatus(chicken);
             return (
               <div key={chicken.id} className="chicken-item">
+                {/*
                 <img 
                   src={getChickenImage(status)} 
                   alt={`Chicken ${status}`} 
@@ -119,6 +127,8 @@ const Lobby = () => {
                   {status === 'hungry' && 'หิว!'}
                   {status === 'dead' && 'ตาย!'}
                 </div>
+                */}
+                <img src="/assets/images/kookkai.gif?v=01" width="350" alt="chickens" />
               </div>
             );
           })()}

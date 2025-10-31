@@ -222,6 +222,7 @@ const SellPage = () => {
   const [marketSellPrice, setMarketSellPrice] = useState('');
   const [sellSystemGroup, setSellSystemGroup] = useState(null);
   const [sellSystemAmount, setSellSystemAmount] = useState('');
+  const [buyQuantities, setBuyQuantities] = useState({});
 
   useEffect(() => {
     if (!currentUser) {
@@ -241,7 +242,15 @@ const SellPage = () => {
   const fetchMarketOrders = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      let token = localStorage.getItem('token');
+      try {
+        if (currentUser && currentUser.getIdToken) {
+          token = await currentUser.getIdToken(true);
+          localStorage.setItem('token', token);
+        }
+      } catch (e) {
+        // ignore refresh errors; will fallback to existing token
+      }
       const res = await listMarketOrders(token);
       // ตรวจสอบว่า res เป็น array หรือ object ที่มี orders
       let parsedOrders = [];
@@ -257,7 +266,11 @@ const SellPage = () => {
       setMarketOrders(parsedOrders);
     } catch (error) {
       console.error('Error fetching market orders:', error);
-      alert('Failed to fetch market orders.');
+      if (error?.response?.status === 401) {
+        alert('Session expired. Please re-login.');
+      } else {
+        alert('Failed to fetch market orders.');
+      }
       setMarketOrders([]);
     } finally {
       setLoading(false);
@@ -332,6 +345,8 @@ const SellPage = () => {
         await sellToMarket(chickenId, pricePerChicken, token);
       }
       await refreshData();
+      // Refresh market listings so price/status resolve for newly listed items
+      await fetchMarketOrders();
       setSetPriceGroup(null);
       setMarketSellAmount('');
       setMarketSellPrice('');
@@ -355,6 +370,72 @@ const SellPage = () => {
       alert('ซื้อไก่ไม่สำเร็จ');
     }
     setLoading(false);
+  };
+
+  const handleBuyGroup = async (group, idx) => {
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    try {
+      const qty = Math.max(1, Math.min(parseInt(buyQuantities?.[idx] || '1', 10) || 1, group.count));
+      for (let i = 0; i < qty && i < group.orderIds.length; i++) {
+        await buyFromMarket(group.orderIds[i], token);
+      }
+      await refreshData();
+      await fetchMarketOrders();
+    } catch (e) {
+      alert('ไม่สามารถซื้อได้ โปรดลองอีกครั้ง');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Group open market orders by seller + price + weight + type
+  const groupMarketOrdersForBuy = (orders) => {
+    const mine = currentUser?.uid;
+    const groups = {};
+    for (const o of (orders || [])) {
+      if (o.status !== 'open') continue;
+      if (o.userId === mine) continue; // don't show my own listings in buy tab
+      const weight = Number(o.chickenData?.weight || 0);
+      const weightKey = weight.toFixed(2);
+      const priceKey = Number(o.price || 0).toFixed(2);
+      const typeKey = o.chickenData?.type || 'Unknown';
+      const key = `${o.userId}|${priceKey}|${weightKey}|${typeKey}`;
+      if (!groups[key]) {
+        groups[key] = {
+          userId: o.userId,
+          price: Number(priceKey),
+          weight: Number(weightKey),
+          type: typeKey,
+          count: 0,
+          orderIds: []
+        };
+      }
+      groups[key].count += 1;
+      groups[key].orderIds.push(o.id);
+    }
+    return Object.values(groups);
+  };
+
+  const [cancelQuantities, setCancelQuantities] = useState({});
+
+  const handleCancelGroup = async (group, idx, mode = 'count') => {
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    try {
+      const target = mode === 'all'
+        ? group.orderIds.length
+        : Math.max(1, Math.min(parseInt(cancelQuantities?.[idx] || '1', 10) || 1, group.orderIds.length));
+      for (let i = 0; i < target && i < group.orderIds.length; i++) {
+        await cancelChickenListing(group.orderIds[i], token);
+      }
+      await refreshData();
+      await fetchMarketOrders();
+    } catch (e) {
+      alert('ไม่สามารถยกเลิกได้ โปรดลองอีกครั้ง');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -406,30 +487,55 @@ const SellPage = () => {
               ))
             ) : (
               <p>ไม่มีไก่ในฟาร์มที่พร้อมขาย</p>
-            )}
-
-            <SectionTitle style={{ marginTop: '24px' }}>ไก่ของคุณที่ตั้งขายอยู่</SectionTitle>
-            {chickens.filter(chicken => chicken.marketOrderId).length > 0 ? (
-              chickens.filter(chicken => chicken.marketOrderId).map((chicken) => {
-                const order = marketOrders.find(o => o.id === chicken.marketOrderId);
-                return (
-                  <GroupCard key={chicken.id}>
-            <GroupHeader>
-                      <GroupTitle>{`ไก่ ${chicken.type || 'Unknown'} | ${Number(chicken.weight || 0).toFixed(2)} kg`}</GroupTitle>
-                      <GroupCount>{`ราคา: ${order ? order.price : '-'} Coins`}</GroupCount>
-            </GroupHeader>
-                    <SellButton 
-                      onClick={() => handleCancelListing(chicken.marketOrderId)}
-                      style={{ backgroundColor: '#f44336' }} // สีแดงสำหรับยกเลิก
-                    >
-                      ยกเลิกการขาย
-            </SellButton>
-          </GroupCard>
-                );
-              })
-            ) : (
-              <p>คุณยังไม่ได้ตั้งขายไก่ในตลาด</p>
-            )}
+            )}            
+      </Section>
+      <Section>
+        <SectionTitle>รายการที่คุณเปิดขาย (แบบ grouped)</SectionTitle>
+        {(() => {
+          const mine = currentUser?.uid;
+          const groups = {};
+          (marketOrders || []).forEach((o) => {
+            if (o.status !== 'open' || o.userId !== mine) return;
+            const weightKey = Number(o.chickenData?.weight || 0).toFixed(2);
+            const priceKey = Number(o.price || 0).toFixed(2);
+            const typeKey = o.chickenData?.type || 'Unknown';
+            const key = `${priceKey}|${weightKey}|${typeKey}`;
+            if (!groups[key]) {
+              groups[key] = { price: Number(priceKey), weight: Number(weightKey), type: typeKey, count: 0, orderIds: [] };
+            }
+            groups[key].count += 1;
+            groups[key].orderIds.push(o.id);
+          });
+          const list = Object.values(groups);
+          return list.length > 0 ? (
+            list.map((g, idx) => (
+              <GroupCard key={idx}>
+                <GroupHeader>
+                  <GroupTitle>{`ไก่ ${g.type} | ${g.weight.toFixed(2)} kg`}</GroupTitle>
+                  <GroupCount>{`ราคา: ${g.price} Coins | จำนวน: ${g.count}`}</GroupCount>
+                </GroupHeader>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    min="1"
+                    max={g.count}
+                    value={cancelQuantities[idx] || '1'}
+                    onChange={(e) => setCancelQuantities({ ...cancelQuantities, [idx]: e.target.value })}
+                    style={{ width: 100, padding: 6, borderRadius: 8, border: '1px solid #ccc' }}
+                  />
+                  <SellButton onClick={() => handleCancelGroup(g, idx, 'count')} style={{ backgroundColor: '#f44336' }}>
+                    ยกเลิกตามจำนวน
+                  </SellButton>
+                  <SellButton onClick={() => handleCancelGroup(g, idx, 'all')} style={{ backgroundColor: '#D32F2F' }}>
+                    ยกเลิกทั้งหมด
+                  </SellButton>
+                </div>
+              </GroupCard>
+            ))
+          ) : (
+            <p>ยังไม่มีรายการที่คุณเปิดขาย</p>
+          );
+        })()}
       </Section>
       <Section>
         <SectionTitle>ไข่</SectionTitle>
@@ -448,7 +554,7 @@ const SellPage = () => {
         </>
       )}
 
-      {activeTab === 'buy' && (
+      {activeTab === 'buy' && false && (
         <Section>
           <SectionTitle>รายการไก่ที่ตั้งขายในตลาด</SectionTitle>
           {marketOrders.filter(order => order.status === 'open' && order.userId !== currentUser.uid).length > 0 ? (
@@ -466,6 +572,40 @@ const SellPage = () => {
           ) : (
             <p>ยังไม่มีไก่ให้ซื้อในตลาด</p>
           )}
+        </Section>
+      )}
+
+      {activeTab === 'buy' && (
+        <Section>
+          <SectionTitle>รายการเปิดขาย</SectionTitle>
+          {(() => {
+            const grouped = groupMarketOrdersForBuy(marketOrders);
+            return grouped.length > 0 ? (
+              grouped.map((g, idx) => (
+                <GroupCard key={idx}>
+                  <GroupHeader>
+                    <GroupTitle>{`ไก่ ${g.type} | ${g.weight.toFixed(2)} kg`}</GroupTitle>
+                    <GroupCount>{`ราคา: ${g.price} Coins | จำนวน: ${g.count}`}</GroupCount>
+                  </GroupHeader>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      max={g.count}
+                      value={buyQuantities[idx] || '1'}
+                      onChange={(e) => setBuyQuantities({ ...buyQuantities, [idx]: e.target.value })}
+                      style={{ width: 100, padding: 6, borderRadius: 8, border: '1px solid #ccc' }}
+                    />
+                    <SellButton onClick={() => handleBuyGroup(g, idx)}>
+                      ซื้อจำนวนตามที่เลือก
+                    </SellButton>
+                  </div>
+                </GroupCard>
+              ))
+            ) : (
+              <p>ตอนนี้ยังไม่มีรายการเปิดขาย</p>
+            );
+          })()}
         </Section>
       )}
 

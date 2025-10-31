@@ -49,6 +49,33 @@ export default function GameProvider({ children }) {
     refreshData();
   }, []);
 
+  // Lightweight auto-refresh for coin balance
+  useEffect(() => {
+    let timer;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const tick = async () => {
+      if (document.hidden) return; // avoid background polling when not visible
+      try {
+        const res = await getBalance(token);
+        setCoins(res.data.coin_balance || 0);
+      } catch (e) {
+        // ignore transient errors
+      }
+    };
+
+    // refresh on tab focus and every 20s
+    const onFocus = () => { tick(); };
+    window.addEventListener('focus', onFocus);
+    timer = setInterval(tick, 20000);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      if (timer) clearInterval(timer);
+    };
+  }, []);
+
   return (
     <GameContext.Provider
       value={{

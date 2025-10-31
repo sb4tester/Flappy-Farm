@@ -360,10 +360,40 @@ const handleFeedSelected = async () => {
     <PageContainer>
       <Header>
         <StatusBar>
-          <BackButton onClick={() => navigate('/')}>{'<'} Lobby</BackButton>
-          <span>🍗: {food}</span>
-          <span>🥚: {allChickens.filter(c=>c.type==='mother').reduce((sum, c) => sum + (c.eggs || 0), 0)}</span>
-          <span>🐔: {allChickens.length}</span>
+          <BackButton onClick={() => navigate('/')}><img
+    src="/assets/images/back-250x250.png"
+    
+    style={{ width: '20px', height: 'auto', objectFit: 'contain' }}
+  /> Lobby</BackButton>
+<span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+  <img
+    src="/assets/images/head-food.png"
+    alt="food"
+    style={{ width: '20px', height: 'auto', objectFit: 'contain' }}
+  />
+  {food}
+</span>
+
+<span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+  <img
+    src="/assets/images/head-egg.png"
+    alt="egg"
+    style={{ width: '20px', height: 'auto', objectFit: 'contain' }}
+  />
+  {allChickens
+    .filter(c => c.type === 'mother')
+    .reduce((sum, c) => sum + (c.eggs || 0), 0)}
+</span>
+
+<span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+  <img
+    src="/assets/images/head-kookkai.png"
+    alt="chicken"
+    style={{ width: '20px', height: 'auto', objectFit: 'contain' }}
+  />
+  {allChickens.length}
+</span>
+
         </StatusBar>
         <FilterBar>
           <FilterButton active={filter==='all'} onClick={()=>setFilter('all')}>ทั้งหมด</FilterButton>
@@ -383,7 +413,7 @@ const handleFeedSelected = async () => {
             // รูปภาพไก่ตามสถานะ
             let chickenImage = '/assets/images/kai-003.png'; // default: normal/อิ่ม
             if (group.status === 'hungry') chickenImage = '/assets/images/kai-002.png';
-            if (group.status === 'dead') chickenImage = '/assets/images/kai-001.png';
+            if (group.status === 'dead') chickenImage = '/assets/images/dead.png';
             return (
               <ChickenCard key={group.status + group.displayWeight} onClick={() => canFeed && handleSelectGroup(group)} style={{cursor: canFeed ? 'pointer' : 'default', position:'relative'}}>
                 <ChickenSelect

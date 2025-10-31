@@ -14,7 +14,34 @@ const referralController = require('./controllers/referralController');
 const promotionsRoutes = require('./routes/promotions');
 const foodRoutes = require('./routes/food');
 const incubatorRoutes = require('./routes/incubator');
-require('./cron/dailyJobs');
+const marketRoutes = require('./routes/market'); // เพิ่มบรรทัดนี้
+const cron = require('node-cron');
+const dailyJobs = require('./cron/dailyJobs');
+const { drawWinners } = require('./cron/luckyDraw');
+
+cron.schedule('0 0 * * *', async () => {
+  await dailyJobs.dailyTask();
+});
+
+// Spawn eggs daily at 07:00 Asia/Bangkok
+cron.schedule('0 7 * * *', async () => {
+  await dailyJobs.spawnDailyEggs();
+}, { timezone: 'Asia/Bangkok' });
+
+// ทุก 7 วัน → lucky draw ไข่ทองแดง
+cron.schedule('0 0 */7 * *', async () => {
+  await drawWinners('bronze');
+});
+
+// ทุก 14 วัน → lucky draw ไข่เงิน
+cron.schedule('0 0 */14 * *', async () => {
+  await drawWinners('silver');
+});
+
+// ทุก 28 วัน → lucky draw ไข่ทอง
+cron.schedule('0 0 */28 * *', async () => {
+  await drawWinners('gold');
+});
 
 const app = express();
 app.use(cors());
@@ -32,6 +59,7 @@ app.post('/chickens/sell', verifyToken, farmController.sellChicken);
 app.get('/eggs', verifyToken, eggsController.getEggs);
 app.post('/eggs/sell', verifyToken, eggsController.sellEggs);
 
+// Market routes - เก่า (เก็บไว้เพื่อ backward compatibility)
 app.get('/market/orders', verifyToken, marketController.listOrders);
 app.post('/market/order', verifyToken, marketController.createOrder);
 app.post('/market/fill/:id', verifyToken, marketController.fillOrder);
@@ -54,6 +82,9 @@ app.use('/food', foodRoutes);
 // Incubator routes
 app.use('/incubator', incubatorRoutes);
 
+// Market routes - ใหม่ (เพิ่มบรรทัดนี้)
+app.use('/api/market', marketRoutes);
+
 // Routes
 app.use('/api/farm', farmRoutes);
 
@@ -64,4 +95,17 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.API_PORT || process.env.PORT || 5000;
+
+// On-chain deposit scanner every 1 minute (Asia/Bangkok)
+cron.schedule('*/1 * * * *', async () => {
+  try {
+    const { scanDepositsOnce } = require('./depositScanner');
+    await scanDepositsOnce();
+  } catch (e) {
+    console.error('Deposit scanner error:', e && e.message ? e.message : e);
+  }
+}, { timezone: 'Asia/Bangkok' });
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+
+

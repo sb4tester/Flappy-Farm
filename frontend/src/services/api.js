@@ -105,6 +105,9 @@ const sellChickensToSystem = async (quantity, token) => {
 const getBalance = (token) => api.get('/wallet/balance', { headers: bearer(token) });
 const deposit = (data, token) => api.post('/wallet/deposit', data, { headers: bearer(token) });
 const withdraw = (data, token) => api.post('/wallet/withdraw', data, { headers: bearer(token) });
+const getDepositAddress = (token) => api.get('/wallet/deposit-address', { headers: bearer(token) });
+const getDepositTransactions = (token, limit = 50) =>
+  api.get(`/wallet/transactions/deposit?limit=${limit}`, { headers: bearer(token) });
 
 // Eggs APIs
 const getEggs = (token) => api.get('/eggs', { headers: bearer(token) });
@@ -130,7 +133,7 @@ const feedChick = (id, token) => api.post(`/chicks/feed/${id}`, null, { headers:
 const sellChick = (id, token) => api.post(`/chicks/sell/${id}`, null, { headers: bearer(token) });
 
 // Market APIs
-const listMarketOrders = (token) => api.get('/market/orders', { headers: bearer(token) });
+const listMarketOrders = (token) => api.get('/api/market/chicken/listings', { headers: bearer(token) });
 const sellToMarket = (chickenId, price, token) => api.post(`/api/market/chicken/${chickenId}/list`, { price }, { headers: bearer(token) });
 
 // Referral APIs
@@ -148,7 +151,7 @@ const getFarmStatus = async (token) => {
   ]);
   return {
     chickens: chickensRes.data,
-    coinBalance: walletRes.data.balance,
+    coinBalance: walletRes.data.coin_balance,
     food: walletRes.data.food
   };
 };
@@ -286,6 +289,8 @@ export {
   getBalance,
   deposit,
   withdraw,
+  getDepositAddress,
+  getDepositTransactions,
 
   // Eggs functions
   getEggs,
