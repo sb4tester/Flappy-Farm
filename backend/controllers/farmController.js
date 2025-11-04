@@ -155,7 +155,7 @@ async function buyMother(req, res) {
 
 async function feedChicken(req, res) {
   const uid = req.user.uid;
-  const { id } = req.params;
+  const id = req.params.id || req.params.chickenId;
   const { units = 1 } = req.body; // จำนวน unit ที่ต้องการให้อาหาร
 
   try {
@@ -177,8 +177,8 @@ async function feedChicken(req, res) {
     const user = userSnap.data();
 
     const foodCost = CHICKEN_FOOD_COST_PER_UNIT * units;
-    if ((user.coin_balance || 0) < foodCost) {
-      return res.status(400).json({ error: 'Not enough coins' });
+    if ((user.food || 0) < units) {
+      return res.status(400).json({ error: 'Not enough food' });
     }
 
     const now = admin.firestore.Timestamp.now();
@@ -194,6 +194,7 @@ async function feedChicken(req, res) {
       weight: (chicken.weight || 0) + weightGain,
       foodCost: (chicken.foodCost || 0) + foodCost,
       totalCost: newTotalCost,
+      feedCount: admin.firestore.FieldValue.increment(units),
       costHistory: admin.firestore.FieldValue.arrayUnion({
         type: 'food',
         amount: foodCost,
@@ -204,21 +205,19 @@ async function feedChicken(req, res) {
 
     // อัพเดทยอดเงินผู้เล่น
     batch.update(userRef, {
-      coin_balance: admin.firestore.FieldValue.increment(-foodCost)
+      food: admin.firestore.FieldValue.increment(-units)
     });
 
     // บันทึกประวัติการให้อาหาร
-    const transactionRef = db.collection('users').doc(uid).collection('transactions').doc();
-    batch.set(transactionRef, {
-      type: 'feedChicken',
-      amount: -foodCost,
+    const feedLogRef = db.collection('users').doc(uid).collection('logs').doc();
+    batch.set(feedLogRef, {
+      event: 'feedChicken',
       chickenId: id,
-      metadata: {
-        foodCost,
-        units,
-        newTotalCost,
-        weightGain
-      },
+      units,
+      foodBefore: user.food || 0,
+      foodAfter: (user.food || 0) - units,
+      foodCostCoinEquivalent: foodCost,
+      weightGain,
       createdAt: now
     });
 
@@ -246,15 +245,15 @@ async function feedMultipleChickens(req, res) {
   }
 
   const foodCostPerChicken = CHICKEN_FOOD_COST_PER_UNIT * units;
-  const totalFoodCost = foodCostPerChicken * chickenIds.length;
+  const totalUnits = units * chickenIds.length;
 
   try {
     const userRef = db.collection('users').doc(uid);
     const userSnap = await userRef.get();
     const user = userSnap.data();
 
-    if ((user.coin_balance || 0) < totalFoodCost) {
-      return res.status(400).json({ error: 'Not enough coins' });
+    if ((user.food || 0) < totalUnits) {
+      return res.status(400).json({ error: 'Not enough food' });
     }
 
     const batch = db.batch();
@@ -280,6 +279,7 @@ async function feedMultipleChickens(req, res) {
         weight: newWeight,
         foodCost: (chicken.foodCost || 0) + foodCostPerChicken,
         totalCost: newTotalCost,
+        feedCount: admin.firestore.FieldValue.increment(units),
         costHistory: admin.firestore.FieldValue.arrayUnion({
           type: 'food',
           amount: foodCostPerChicken,
@@ -298,7 +298,20 @@ async function feedMultipleChickens(req, res) {
     }
 
     batch.update(userRef, {
-      coin_balance: admin.firestore.FieldValue.increment(-totalCharged)
+      food: admin.firestore.FieldValue.increment(-totalUnits)
+    });
+
+    // Audit log for multi-feed (no balance impact)
+    const multiFeedLogRef = userRef.collection('logs').doc();
+    batch.set(multiFeedLogRef, {
+      event: 'feedMultipleChickens',
+      chickenIds,
+      unitsPerChicken: units,
+      totalUnits,
+      foodBefore: user.food || 0,
+      foodAfter: (user.food || 0) - totalUnits,
+      totalFoodCostCoinEquivalent: totalCharged,
+      createdAt: now
     });
 
     await batch.commit();

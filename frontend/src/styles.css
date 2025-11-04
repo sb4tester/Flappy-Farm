@@ -1,1 +1,20 @@
-body { margin: 0; font-family: sans-serif; } .lobby { padding: 20px; }
+body { margin: 0; font-family: sans-serif; } 
+/*.lobby { padding: 20px; } */
+
+/* Shop page polish */
+.shop-item {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.04);
+}
+.shop-item h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.05rem;
+  color: #2b2b2b;
+}
+.shop-item .subtle, .shop-item .price {
+  font-size: 0.95rem;
+  color: #555;
+}

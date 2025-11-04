@@ -4,7 +4,9 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "seed": "node scripts/seedChickens.js"
+    "seed": "node scripts/seedChickens.js",
+    "spawn-eggs": "node scripts/spawnEggsOnce.js",
+    "fix-feedcount": "node scripts/fixFeedCountFromHistory.js"
   },
   "dependencies": {
     "express": "^4.18.2",

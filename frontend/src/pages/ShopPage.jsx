@@ -22,38 +22,53 @@ const GOLD_EGG_ICON = process.env.PUBLIC_URL + '/assets/images/Gold-Egg.png';
 const FOOD_ICON = process.env.PUBLIC_URL + '/assets/images/food.png';
 
 const ShopContainer = styled.div`
+  position: relative;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: url(${process.env.PUBLIC_URL}/assets/images/background.jpg);
-  background-size: cover;
-  background-position: center;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  height: 100vh;
   overflow: hidden;
+
+  &:before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url(${process.env.PUBLIC_URL}/assets/images/background.jpg);
+    background-size: cover;
+    background-position: center;
+    filter: blur(2px);
+    transform: scale(1.02);
+  }
+
+  &:after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.88) 100%);
+  }
 `;
 
 const HeaderWrapper = styled.div`
   width: 100%;
   max-width: 430px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  z-index: 10;
+  padding: 16px;
+  z-index: 1;
 `;
 
 const PageHeader = styled.h2`
   width: 100%;
   text-align: center;
-  padding: 40px 0 10px 0;
-  margin: 0;
-  font-size: 1.8rem;
-  color: #333;
+  margin: 16px 0 0 0;
+  font-size: 1.6rem;
+  color: #2b2b2b;
 `;
 
 const ShopContent = styled.div`
+  position: relative;
   width: 100%;
   max-width: 430px;
   flex-grow: 1;
@@ -61,82 +76,43 @@ const ShopContent = styled.div`
   background: rgba(255, 255, 255, 0.9);
   border-radius: 16px;
   padding: 20px;
-  padding-top: 0;
+  margin: 8px auto 16px auto; /* center and avoid horizontal overflow */
   display: flex;
   flex-direction: column;
-  align-items: center;
-  overflow-y: auto; /* Keep this for overall scrolling if content exceeds screen height */
+  align-items: stretch;
+  gap: 16px;
+  z-index: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 `;
 
 const PackageContainer = styled.div`
-  
-  padding: 16px 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 0;
   width: 100%;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  /* Adjustments for better visibility */
-  height: auto; /* Let content define height */
-  
-  align-items: flex-start; /* Align cards to the top within the container */
-
-  &::-webkit-scrollbar {
-    height: 8px;
-  }
-  &::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: #555;
-  }
 `;
 
-const PackageContainer1 = styled.div`
-  display: flex;
-  overflow-x: auto;
-  gap: 16px;
-  padding: 16px 0;
-  width: 100%;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  /* Adjustments for better visibility */
-  height: auto; /* Let content define height */
-  min-height: 400px; /* Ensure a minimum height for the container itself, allows more space for cards */
-  align-items: flex-start; /* Align cards to the top within the container */
-
-  &::-webkit-scrollbar {
-    height: 8px;
-  }
-  &::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: #555;
-  }
+const PackageContainer1 = styled(PackageContainer)`
+  min-height: 400px;
 `;
 
 const PackageCard = styled.div`
-  flex: 0 0 280px;
+  width: 100%;
   background: ${props => props.color || '#fff'};
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 16px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
   color: ${props => props.textColor || '#333'};
-  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  max-height: 380px;  /* Adjusted slightly, will be managed more by content and PackageContainer */
   text-align: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 1px solid rgba(0,0,0,0.04);
+
+  &:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,0.12); }
 `;
 
 
@@ -149,7 +125,7 @@ const PackageImage = styled.img`
 
 const PackageTitle = styled.h3`
   margin: 0 0 8px 0;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
 `;
 
 const PackageDetails = styled.div`
@@ -159,28 +135,32 @@ const PackageDetails = styled.div`
 `;
 
 const QuantityInput = styled.input`
-  width: 80px;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  width: 96px;
+  padding: 10px 12px;
+  border: 1px solid #e2e2e2;
+  border-radius: 10px;
   margin-right: 8px;
   text-align: center;
+  font-size: 0.95rem;
+  background: #fafafa;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  &:focus { outline: none; border-color: #4CAF50; box-shadow: 0 0 0 3px rgba(76,175,80,0.15); background: #fff; }
 `;
 
 const BuyButton = styled.button`
   background: #4CAF50;
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-weight: bold;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-weight: 600;
   cursor: pointer;
   width: 100%;
   margin-top: auto;
-  &:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-  }
+  transition: filter 0.15s ease, transform 0.05s ease;
+  &:hover:not(:disabled) { filter: brightness(1.02); }
+  &:active:not(:disabled) { transform: translateY(1px); }
+  &:disabled { background: #cfcfcf; cursor: not-allowed; }
 `;
 
 const FoodItemContainer = styled.div`
@@ -195,6 +175,42 @@ const FoodIcon = styled.img`
   width: 24px;
   height: 24px;
   vertical-align: middle;
+`;
+
+// New shared pieces for better layout
+const SectionHeader = styled.h3`
+  margin: 8px 0 4px 0;
+  color: #2b2b2b;
+  font-size: 1.05rem;
+`;
+
+const ItemCard = styled.div`
+  width: 100%;
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.04);
+`;
+
+const Row = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const Subtle = styled.div`
+  font-size: 0.95rem;
+  color: #555;
+`;
+
+const BackButton = styled.button`
+  padding: 12px 16px;
+  background: #6b7280;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
 `;
 
 const ShopPage = () => {

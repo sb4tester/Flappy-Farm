@@ -23,10 +23,45 @@ cron.schedule('0 0 * * *', async () => {
   await dailyJobs.dailyTask();
 });
 
-// Spawn eggs daily at 07:00 Asia/Bangkok
+// Spawn eggs daily at 07:00 Asia/Bangkok (cron-based)
 cron.schedule('0 7 * * *', async () => {
   await dailyJobs.spawnDailyEggs();
 }, { timezone: 'Asia/Bangkok' });
+
+// Fallback scheduler in case timezone handling on host is unreliable
+// Checks Bangkok time every minute and triggers once per Bangkok day at 07:00
+(function setupBangkokFallbackScheduler() {
+  const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7, no DST
+  let lastRunDateBangkok = null; // "YYYY-MM-DD"
+
+  function getBangkokNow() {
+    return new Date(Date.now() + BANGKOK_OFFSET_MS);
+  }
+
+  function getBangkokDateKey(d) {
+    return d.toISOString().slice(0, 10); // safe because we already shifted by +7h
+  }
+
+  async function maybeRunDailyEggs() {
+    try {
+      const nowBkk = getBangkokNow();
+      const dateKey = getBangkokDateKey(nowBkk);
+      const hour = nowBkk.getUTCHours(); // after shift, UTC hours == Bangkok local hours
+      const minute = nowBkk.getUTCMinutes();
+
+      if (hour === 7 && minute === 0 && lastRunDateBangkok !== dateKey) {
+        console.log(`[FallbackScheduler] Triggering spawnDailyEggs for ${dateKey} (Asia/Bangkok 07:00)`);
+        await dailyJobs.spawnDailyEggs();
+        lastRunDateBangkok = dateKey;
+      }
+    } catch (e) {
+      console.error('[FallbackScheduler] Error while spawning daily eggs:', e && e.message ? e.message : e);
+    }
+  }
+
+  // Kick off loop
+  setInterval(maybeRunDailyEggs, 60 * 1000);
+})();
 
 // ทุก 7 วัน → lucky draw ไข่ทองแดง
 cron.schedule('0 0 */7 * *', async () => {

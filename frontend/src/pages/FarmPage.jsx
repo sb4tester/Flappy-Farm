@@ -255,7 +255,7 @@ function groupChickensByWeightStatus(chickens) {
 }
 
 const FarmPage = () => {
-  const { chickens, food, coins, refreshData } = useGame();
+  const { chickens, eggs, food, coins, refreshData } = useGame();
   const [selectedChickens, setSelectedChickens] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(false);
@@ -380,9 +380,7 @@ const handleFeedSelected = async () => {
     alt="egg"
     style={{ width: '20px', height: 'auto', objectFit: 'contain' }}
   />
-  {allChickens
-    .filter(c => c.type === 'mother')
-    .reduce((sum, c) => sum + (c.eggs || 0), 0)}
+  {Array.isArray(eggs) ? eggs.length : 0}
 </span>
 
 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
@@ -404,7 +402,7 @@ const handleFeedSelected = async () => {
       </Header>
       <Section>
 
-        {loading && <LoadingModal><LoadingBox>🍗 กำลังให้อาหารไก่...</LoadingBox></LoadingModal>}        
+        {loading && <LoadingModal><LoadingBox><img src="/assets/images/kai_loading.gif" style={{width: '130px', height: 'auto', objectFit: 'contain'}} /> กำลังให้อาหารไก่...</LoadingBox></LoadingModal>}        
         <ChickenGrid>
           {groupedChickens.length === 0 && <div style={{textAlign:'center',color:'#888',gridColumn:'1/-1'}}>ไม่มีไก่ในสถานะนี้</div>}
           {groupedChickens.map(group => {

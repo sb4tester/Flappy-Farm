@@ -168,7 +168,8 @@ const buyFoodRedux = (amount, token) =>
 
 // Market functions
 const buyFromMarket = (orderId, token) => {
-  return api.post(`/api/market/chicken/${orderId}/buy`, null, { headers: bearer(token) });
+  // Use empty object instead of null to avoid body-parser strict JSON errors
+  return api.post(`/api/market/chicken/${orderId}/buy`, {}, { headers: bearer(token) });
 };
 
 const cancelChickenListing = (orderId, token) => {

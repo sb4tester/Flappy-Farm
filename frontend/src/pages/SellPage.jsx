@@ -3,14 +3,14 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGame } from '../contexts/GameContext';
-import { listMarketOrders, sellChickensToSystem, buyFromMarket, sellToMarket, cancelChickenListing } from '../services/api';
+import { listMarketOrders, sellChickensToSystem, buyFromMarket, sellToMarket, cancelChickenListing, sellEggs } from '../services/api';
 
 const PageContainer = styled.div`
   max-width: 500px;
   margin: 0 auto;
   padding: 16px;
   min-height: 100vh;
-  background: #f5f5f5;
+  background: url('/assets/images/sellpage_wallpaper.png') center/contain repeat;
   display: flex;
   flex-direction: column;
 `;
@@ -315,6 +315,28 @@ const SellPage = () => {
     return Object.values(groups);
   };
 
+  // Handle selling eggs back to system
+  const handleSell = async () => {
+    if (!selectedGroup) return;
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await sellEggs({ type: selectedGroup.type }, token);
+      const sold = res?.data?.sold ?? 0;
+      const gained = res?.data?.gained ?? 0;
+      alert(`ขายไข่ ${selectedGroup.type} จำนวน ${sold} ได้รับ ${gained} coin`);
+      await refreshData();
+      setSelectedGroup(null);
+      setSellAmount('');
+      setSellPrice('');
+    } catch (e) {
+      console.error('Error selling eggs:', e);
+      alert(e.response?.data?.error || 'ขายไข่ล้มเหลว');
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   // --- ฟังก์ชันตั้งราคาขาย (ขายในตลาด) ---
   const handleSetPrice = (group) => {
@@ -473,7 +495,7 @@ const SellPage = () => {
                       setSellSystemGroup(group);
                       setSellSystemAmount(group.count.toString());
                     }}>
-                      ขายทันที (7 Coins / ตัว)
+                      ขายทันที
                     </SellButton>
 
                     <SellButton 
@@ -514,22 +536,37 @@ const SellPage = () => {
                   <GroupTitle>{`ไก่ ${g.type} | ${g.weight.toFixed(2)} kg`}</GroupTitle>
                   <GroupCount>{`ราคา: ${g.price} Coins | จำนวน: ${g.count}`}</GroupCount>
                 </GroupHeader>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* แถวบน: input + ยกเลิกตามจำนวน */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input
                     type="number"
                     min="1"
                     max={g.count}
                     value={cancelQuantities[idx] || '1'}
-                    onChange={(e) => setCancelQuantities({ ...cancelQuantities, [idx]: e.target.value })}
+                    onChange={(e) =>
+                      setCancelQuantities({ ...cancelQuantities, [idx]: e.target.value })
+                    }
                     style={{ width: 100, padding: 6, borderRadius: 8, border: '1px solid #ccc' }}
                   />
-                  <SellButton onClick={() => handleCancelGroup(g, idx, 'count')} style={{ backgroundColor: '#f44336' }}>
+                  <SellButton
+                    onClick={() => handleCancelGroup(g, idx, 'count')}
+                    style={{ backgroundColor: '#f44336', whiteSpace: 'nowrap' }} // กันตัดบรรทัด
+                  >
                     ยกเลิกตามจำนวน
                   </SellButton>
-                  <SellButton onClick={() => handleCancelGroup(g, idx, 'all')} style={{ backgroundColor: '#D32F2F' }}>
-                    ยกเลิกทั้งหมด
-                  </SellButton>
                 </div>
+
+                {/* แถวล่าง: ยกเลิกทั้งหมด */}
+                <SellButton
+                  onClick={() => handleCancelGroup(g, idx, 'all')}
+                  style={{ backgroundColor: '#D32F2F' }}
+                >
+                  ยกเลิกทั้งหมด
+                </SellButton>
+              </div>
+
               </GroupCard>
             ))
           ) : (
@@ -618,7 +655,7 @@ const SellPage = () => {
     <ModalContent>
       <ModalTitle>ขายแม่ไก่ให้ระบบ {sellSystemGroup.type} - {sellSystemGroup.weight.toFixed(2)} kg</ModalTitle>
       <InputGroup>
-        <Label>จำนวนที่ต้องการขาย</Label>
+        <Label>จำนวนที่ต้องการขาย (ราคา 7 coin/ตัว)</Label>
         <Input
           type="number"
           min="1"
