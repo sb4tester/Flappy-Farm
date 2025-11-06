@@ -6,7 +6,9 @@
     "start": "node app.js",
     "seed": "node scripts/seedChickens.js",
     "spawn-eggs": "node scripts/spawnEggsOnce.js",
-    "fix-feedcount": "node scripts/fixFeedCountFromHistory.js"
+    "fix-feedcount": "node scripts/fixFeedCountFromHistory.js",
+    "monthly-lucky-draw": "node scripts/runMonthlyLuckyDraw.js",
+    "export-firestore": "node scripts/exportFirestore.js"
   },
   "dependencies": {
     "express": "^4.18.2",

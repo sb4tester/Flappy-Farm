@@ -63,7 +63,7 @@ export default function DepositPage() {
             <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
               <img
                 alt="Deposit QR"
-                src="/assets/images/deposit_qr.png"
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(address)}`}
                 style={{ width: 220, height: 220, borderRadius: 8, background: '#fff', objectFit: 'contain' }}
               />
             </div>
@@ -73,11 +73,37 @@ export default function DepositPage() {
                 {copyOk ? 'Copied' : 'Copy'}
               </button>
             </div>
-            <div style={{ textAlign: 'center', color: '#aaa', marginTop: 8, fontSize: 12 }}>Network: BSC USDT</div>
+            <div style={{ textAlign: 'center', color: '#aaa', marginTop: 8, fontSize: 12 }}>เครือข่าย: BSC USDT (BEP20)</div>
           </>
         ) : (
           <div style={{ color: '#f66' }}>Deposit address not configured.</div>
         )}
+      </div>
+
+      {/* Deposit Instructions */}
+      <div style={{ background: '#101010', color: '#eee', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+        <h3 style={{ marginTop: 0 }}>ขั้นตอนการฝาก (Deposit)</h3>
+        <div>
+          <h4 style={{ margin: '8px 0' }}>ถ้าใช้ Testnet</h4>
+          <ol style={{ marginTop: 8, paddingLeft: 18, lineHeight: 1.6 }}>
+            <li>เปิดกระเป๋า (เช่น MetaMask) แล้วเปลี่ยนเครือข่ายเป็น BSC Testnet</li>
+            <li>ขอรับเหรียญทดสอบจาก BSC Testnet Faucet (เช่น USDT/BNB สำหรับค่าธรรมเนียม)</li>
+            <li>คัดลอก Address ข้างบน หรือสแกน QR แล้วโอน USDT (BEP20 Testnet) มายังที่อยู่นี้</li>
+            <li>รอการยืนยันเครือข่าย จากนั้นระบบจะตรวจจับและเติม Coin ให้อัตโนมัติ</li>
+          </ol>
+
+          <h4 style={{ margin: '12px 0 8px' }}>ถ้าใช้ Mainnet</h4>
+          <ol style={{ marginTop: 8, paddingLeft: 18, lineHeight: 1.6 }}>
+            <li>เปิดกระเป๋า (เช่น MetaMask) แล้วเปลี่ยนเครือข่ายเป็น BSC Mainnet</li>
+            <li>คัดลอก Address ข้างบน หรือสแกน QR แล้วโอน USDT (BEP20) มายังที่อยู่นี้</li>
+            <li>เผื่อค่าธรรมเนียม Gas เป็น BNB ให้เพียงพอ</li>
+            <li>รอการยืนยันเครือข่าย ระบบจะเติม Coin ให้อัตโนมัติตามอัตราแลกเปลี่ยน</li>
+          </ol>
+
+          <div style={{ color: '#aaa', fontSize: 12, marginTop: 8 }}>
+            หมายเหตุ: โปรดตรวจสอบให้แน่ใจว่าโอนบนเครือข่าย BSC (BEP20) เท่านั้น และตรวจสอบที่อยู่ให้ถูกต้องก่อนยืนยันการโอนทุกครั้ง
+          </div>
+        </div>
       </div>
 
       <div style={{ background: '#1f1f1f', color: '#fff', borderRadius: 12, padding: 16 }}>

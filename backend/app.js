@@ -64,19 +64,21 @@ cron.schedule('0 7 * * *', async () => {
 })();
 
 // ทุก 7 วัน → lucky draw ไข่ทองแดง
-cron.schedule('0 0 */7 * *', async () => {
-  await drawWinners('bronze');
-});
+// Removed periodic bronze lucky draw (moved to monthly on 25th)
 
 // ทุก 14 วัน → lucky draw ไข่เงิน
-cron.schedule('0 0 */14 * *', async () => {
-  await drawWinners('silver');
-});
+// Removed periodic silver lucky draw (moved to monthly on 25th)
 
 // ทุก 28 วัน → lucky draw ไข่ทอง
-cron.schedule('0 0 */28 * *', async () => {
-  await drawWinners('gold');
-});
+// Monthly lucky draw on the 25th (Asia/Bangkok), once per month
+cron.schedule('0 0 25 * *', async () => {
+  try {
+    const { runMonthlyLuckyDraw } = require('./cron/monthlyLuckyDraw');
+    await runMonthlyLuckyDraw();
+  } catch (e) {
+    console.error('[MonthlyLuckyDraw] Error:', e && e.message ? e.message : e);
+  }
+}, { timezone: 'Asia/Bangkok' });
 
 const app = express();
 app.use(cors());

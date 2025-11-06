@@ -83,7 +83,7 @@ const Lobby = () => {
           <img src="/assets/images/coin.png" alt="coin" />
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>{(coins ?? 0).toLocaleString()}
             <img
-              src="/assets/images/Plus-Icon.png"
+              src="/assets/images/plus-icon.png"
               alt="Deposit"
               onClick={() => navigate('/deposit')}
               style={{ width: '20px', height: 'auto', objectFit: 'contain', cursor: 'pointer' }}
