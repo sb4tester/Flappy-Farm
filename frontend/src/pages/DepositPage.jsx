@@ -22,13 +22,33 @@ export default function DepositPage() {
           getDepositTransactions(token, 50)
         ]);
         setAddress(addrRes.data.address || '');
-        setTxs((txRes.data.transactions || []).map((t) => ({
-          id: t.id,
-          type: t.type,
-          amount: t.amount,
-          createdAt: t.createdAt?.toDate ? t.createdAt.toDate() : (t.createdAt?._seconds ? new Date(t.createdAt._seconds * 1000) : null),
-          metadata: t.metadata || {}
-        })));
+        const normalizeCreatedAt = (value) => {
+          try {
+            if (!value) return null;
+            if (value instanceof Date) return value;
+            if (typeof value === 'string' || typeof value === 'number') return new Date(value);
+            if (value?.toDate) return value.toDate();
+            if (value?._seconds) return new Date(value._seconds * 1000);
+          } catch (_) {}
+          return null;
+        };
+
+        const txsRaw = Array.isArray(txRes?.data?.transactions) ? txRes.data.transactions : [];
+        const normalized = txsRaw.map((t) => {
+          const id = t.id || t._id || t.txId || t.hash || undefined;
+          const amount = (typeof t.amount === 'number')
+            ? t.amount
+            : (typeof t.amountCoin === 'number' ? t.amountCoin : 0);
+          const metadata = { ...(t.metadata || t.meta || {}) };
+          // Ensure usdtAmount is available in metadata for UI
+          if (metadata.usdtAmount == null && typeof t.amountUSDT === 'number') {
+            metadata.usdtAmount = t.amountUSDT;
+          }
+          const createdAt = normalizeCreatedAt(t.createdAt);
+          return { id, type: t.type, amount, createdAt, metadata };
+        });
+
+        setTxs(normalized);
       } catch (e) {
         console.error('Failed to load deposit data', e);
       } finally {

@@ -1,13 +1,16 @@
-const { db, admin } = require('../firebase');
+const { connectMongo } = require('../db/mongo');
+const userRepo = require('../repositories/userRepo');
+const User = require('../models/User');
 
 // get tree up to 5 levels
 async function getChildren(uid, level) {
   if (level > 5) return [];
-  const snap = await db.collection('users').where('referrer', '==', uid).get();
+  await connectMongo();
+  const children = await User.find({ referredBy: uid }).lean().exec();
   const result = [];
-  for (const doc of snap.docs) {
-    const child = { uid: doc.id, children: [] };
-    child.children = await getChildren(doc.id, level + 1);
+  for (const u of children) {
+    const child = { uid: u.uid, children: [] };
+    child.children = await getChildren(u.uid, level + 1);
     result.push(child);
   }
   return result;
@@ -22,15 +25,14 @@ exports.getReferralTree = async (req, res) => {
 // distribute commission for deposit amount
 exports.distributeCommission = async (uid, amount) => {
   const rates = [5,4,3,2,1];
+  await connectMongo();
   let currentUid = uid;
   for (let i = 0; i < rates.length; i++) {
-    const userSnap = await db.collection('users').doc(currentUid).get();
-    const user = userSnap.data();
-    if (!user || !user.referrer) break;
-    const parent = user.referrer;
+    const user = await User.findOne({ uid: currentUid }).lean().exec();
+    if (!user || !user.referredBy) break;
+    const parent = user.referredBy;
     const commission = Math.floor(amount * (rates[i]/100));
-    await db.collection('users').doc(parent)
-      .update({ coin_balance: admin.firestore.FieldValue.increment(commission) });
+    await userRepo.incCoins(parent, commission);
     currentUid = parent;
   }
 };

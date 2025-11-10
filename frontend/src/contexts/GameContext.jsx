@@ -30,7 +30,8 @@ export default function GameProvider({ children }) {
     try {
       const [balanceRes, chickensRes, eggsRes, foodsRes] = await Promise.all([
         getBalance(token),
-        getChickens(token),
+        // Fetch all statuses so frontend filter works correctly
+        getChickens(token, 'all'),
         getEggs(token),
         getFood(token)
       ]);

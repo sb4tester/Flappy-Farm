@@ -332,14 +332,22 @@ const handleFeedSelected = async () => {
   const filteredChickens = allChickens.filter(chicken => {
     const status = chicken.status;
     if (filter === 'all') return true;
-    if (filter === 'normal') return status === 'normal';
+    // Treat 'normal' (อิ่ม) as both 'normal' and legacy 'alive'
+    if (filter === 'normal') return status === 'normal' || status === 'alive';
     if (filter === 'hungry') return status === 'hungry';
     if (filter === 'dead') return status === 'dead';
     return true;
   });
 
-  // Group chickens for display (by weight+status)
-  const groupedChickens = groupChickensByWeightStatus(filteredChickens);
+  // Group chickens for display (by weight+status) and sort by status: hungry -> normal -> dead
+  const statusPriority = { hungry: 0, normal: 1, alive: 1, dead: 2 };
+  const groupedChickens = groupChickensByWeightStatus(filteredChickens).sort((a, b) => {
+    const pa = statusPriority[a.status] ?? 99;
+    const pb = statusPriority[b.status] ?? 99;
+    if (pa !== pb) return pa - pb;
+    // Optional: stable secondary sort by weight desc for nicer grouping
+    return (Number(b.displayWeight || b.weight || 0) - Number(a.displayWeight || a.weight || 0));
+  });
 
   // ฟังก์ชันเลือกกลุ่ม
   const handleSelectGroup = (group) => {

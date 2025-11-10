@@ -1,10 +1,12 @@
-const { db } = require('../firebase');
+const { connectMongo } = require('../db/mongo');
+const promotionRepo = require('../repositories/promotionRepo');
+const statsRepo = require('../repositories/statsRepo');
 
 exports.getMotherTierPrice = async (req, res) => {
   try {
-    const doc = await db.collection('promotions').doc('motherTierPrice').get();
-    if (!doc.exists) return res.status(404).json({ error: 'Not found' });
-    res.json(doc.data());
+    await connectMongo();
+    const tiers = await promotionRepo.getMotherTierPrice();
+    res.json({ type: 'motherTierPrice', tiers });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -12,9 +14,10 @@ exports.getMotherTierPrice = async (req, res) => {
 
 exports.getStatistics = async (req, res) => {
   try {
-    const doc = await db.collection('promotions').doc('statistics').get();
-    if (!doc.exists) return res.status(404).json({ error: 'Not found' });
-    res.json(doc.data());
+    await connectMongo();
+    const stats = await statsRepo.getStats();
+    if (!stats) return res.status(404).json({ error: 'Not found' });
+    res.json({ totalChickenPurchase: stats.totalChickenPurchase || 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

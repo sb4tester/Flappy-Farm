@@ -1,16 +1,18 @@
-const admin = require('firebase-admin');
 const ethers = require('ethers');
+const { connectMongo } = require('../db/mongo');
+const User = require('../models/User');
+const UserState = require('../models/UserState');
 
 exports.getProfile = async (req, res) => {
   try {
     const uid = req.user.uid;
-    const userDoc = await admin.firestore().collection('users').doc(uid).get();
-
-    if (!userDoc.exists) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json({ uid, ...userDoc.data() });
+    await connectMongo();
+    const user = await User.findOne({ uid }).lean().exec();
+    const state = await UserState.findOne({ uid }).lean().exec();
+    if (!user && !state) return res.status(404).json({ error: 'User not found' });
+    const food = state?.food || 0;
+    const profile = { uid, email: user?.email || null, displayName: user?.displayName || null, photoURL: user?.photoURL || null, farmName: state?.farmName || null, usdtWallet: state?.usdtWallet || null };
+    return res.json({ ...profile, food });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -18,11 +20,10 @@ exports.getProfile = async (req, res) => {
 
 exports.getSettings = async (req, res) => {
   try {
-    const userRef = admin.firestore().collection('users').doc(req.user.uid);
-    const doc = await userRef.get();
-    if (!doc.exists) return res.status(404).send('User not found');
-
-    const { farmName, usdtWallet, twoFactorEnabled } = doc.data();
+    await connectMongo();
+    const state = await UserState.findOne({ uid: req.user.uid }).lean().exec();
+    if (!state) return res.status(404).send('User not found');
+    const { farmName, usdtWallet, twoFactorEnabled } = state;
     res.json({ farmName, usdtWallet, twoFactorEnabled: !!twoFactorEnabled });
   } catch (error) {
     console.error('dY"� getSettings error:', error);
@@ -36,7 +37,7 @@ exports.updateSettings = async (req, res) => {
     let { usdtWallet } = req.body;
 
     const uid = req.user.uid;
-    const db = admin.firestore();
+    await connectMongo();
 
     // Normalize and validate wallet if provided
     let normalizedLower = null;
@@ -51,60 +52,19 @@ exports.updateSettings = async (req, res) => {
       }
     }
 
-    const userRef = db.collection('users').doc(uid);
-    const indexRef = (addrLower) => db.collection('walletIndex').doc(addrLower);
-
-    // Perform uniqueness via index collection in a transaction
-    await db.runTransaction(async (tx) => {
-      const userSnap = await tx.get(userRef);
-      const currentData = userSnap.exists ? userSnap.data() : {};
-      const prevWalletLower = (currentData.usdtWallet || '').toString().toLowerCase();
-
-      const updateData = {
-        farmName,
-        twoFactorEnabled: !!twoFactorEnabled,
-      };
-
-      if (typeof usdtWallet === 'string') {
-        if (normalizedLower) {
-          const idxSnap = await tx.get(indexRef(normalizedLower));
-          if (!idxSnap.exists) {
-            // Fallback duplicate check against existing users in case legacy data lacks index
-            const checksummed = ethers.utils.getAddress(usdtWallet);
-            const q1 = await db.collection('users').where('usdtWallet', '==', normalizedLower).limit(1).get();
-            const q2 = checksummed.toLowerCase() !== normalizedLower
-              ? await db.collection('users').where('usdtWallet', '==', checksummed).limit(1).get()
-              : { empty: true, docs: [] };
-            const dupDoc = !q1.empty ? q1.docs[0] : (!q2.empty ? q2.docs[0] : null);
-            if (dupDoc && dupDoc.id !== uid) {
-              throw new Error('CONFLICT_WALLET');
-            }
-            // Attempt to create the index doc atomically; if it already exists due to race, Firestore will throw
-            tx.create(indexRef(normalizedLower), { uid });
-          } else if (idxSnap.data().uid !== uid) {
-            throw new Error('CONFLICT_WALLET');
-          }
-          // If it existed and belonged to the same uid, ensure it's up to date
-          if (idxSnap.exists && idxSnap.data().uid === uid) {
-            tx.set(indexRef(normalizedLower), { uid }, { merge: true });
-          }
-          updateData.usdtWallet = normalizedLower;
-          updateData.usdtWalletUpdatedAt = admin.firestore.FieldValue.serverTimestamp();
-          if (prevWalletLower && prevWalletLower !== normalizedLower) {
-            tx.delete(indexRef(prevWalletLower));
-          }
-        } else {
-          // clearing wallet
-          updateData.usdtWallet = admin.firestore.FieldValue.delete();
-          updateData.usdtWalletUpdatedAt = admin.firestore.FieldValue.serverTimestamp();
-          if (prevWalletLower) {
-            tx.delete(indexRef(prevWalletLower));
-          }
-        }
+    const existing = await UserState.findOne({ uid }).lean().exec();
+    const prevWalletLower = (existing?.usdtWallet || '').toString().toLowerCase();
+    const updateData = { farmName, twoFactorEnabled: !!twoFactorEnabled };
+    if (typeof usdtWallet === 'string') {
+      if (normalizedLower) {
+        const dup = await UserState.findOne({ uid: { $ne: uid }, usdtWallet: { $in: [normalizedLower, ethers.utils.getAddress(usdtWallet)] } }).lean().exec();
+        if (dup) throw new Error('CONFLICT_WALLET');
+        updateData.usdtWallet = normalizedLower;
+      } else {
+        updateData.usdtWallet = null;
       }
-
-      tx.set(userRef, updateData, { merge: true });
-    });
+    }
+    await UserState.updateOne({ uid }, { $set: updateData }, { upsert: true }).exec();
 
     res.sendStatus(200);
   } catch (error) {

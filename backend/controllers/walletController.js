@@ -1,5 +1,6 @@
 const walletService = require('../services/walletService');
-const { db, admin } = require('../firebase');
+const { connectMongo } = require('../db/mongo');
+const transactionRepo = require('../repositories/transactionRepo');
 
 exports.getBalance = async (req, res) => {
   try {
@@ -18,14 +19,8 @@ exports.deposit = async (req, res) => {
     else if (usdtAmount >= 10000) bonus = 10;
     else if (usdtAmount >= 1000) bonus = 5;
     const coins = await walletService.deposit(req.user.uid, usdtAmount, bonus);
-    // Record a deposit transaction for visibility in Deposit page
-    const userRef = db.collection('users').doc(req.user.uid);
-    await userRef.collection('transactions').add({
-      type: 'deposit',
-      amount: coins,
-      metadata: { usdtAmount, bonusPercent: bonus, channel: 'wallet.deposit' },
-      createdAt: admin.firestore.Timestamp.now()
-    });
+    await connectMongo();
+    await transactionRepo.createTransaction({ userId: req.user.uid, type: 'DEPOSIT', amountCoin: coins, amountUSDT: usdtAmount, meta: { bonusPercent: bonus, channel: 'wallet.deposit' } });
     res.json({ coinsReceived: coins });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -57,25 +52,13 @@ exports.getDepositAddress = async (req, res) => {
 
 exports.getDepositTransactions = async (req, res) => {
   try {
+    // For now, this endpoint can be backed by Mongo Transaction collection (filter type=DEPOSIT)
     const uid = req.user.uid;
     const limit = Math.max(1, Math.min(parseInt(req.query.limit || '50', 10), 200));
-    // Avoid composite index requirement by not ordering in Firestore; sort in memory instead.
-    const MAX_FETCH = Math.max(limit, 200);
-    const snap = await db
-      .collection('users')
-      .doc(uid)
-      .collection('transactions')
-      .where('type', '==', 'deposit')
-      .limit(MAX_FETCH)
-      .get();
-
-    const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    all.sort((a, b) => {
-      const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?._seconds ? a.createdAt._seconds * 1000 : 0);
-      const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?._seconds ? b.createdAt._seconds * 1000 : 0);
-      return tb - ta;
-    });
-    res.json({ transactions: all.slice(0, limit) });
+    await connectMongo();
+    const Transaction = require('../models/Transaction');
+    const txs = await Transaction.find({ userId: uid, type: 'DEPOSIT' }).sort({ createdAt: -1 }).limit(limit).lean().exec();
+    res.json({ transactions: txs });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -18,9 +18,14 @@ const marketRoutes = require('./routes/market'); // เพิ่มบรรท�
 const cron = require('node-cron');
 const dailyJobs = require('./cron/dailyJobs');
 const { drawWinners } = require('./cron/luckyDraw');
+const { connectMongo } = require('./db/mongo');
 
 cron.schedule('0 0 * * *', async () => {
-  await dailyJobs.dailyTask();
+  if (typeof dailyJobs.dailyTaskMongo === 'function') {
+    await dailyJobs.dailyTaskMongo();
+  } else {
+    await dailyJobs.dailyTask();
+  }
 });
 
 // Spawn eggs daily at 07:00 Asia/Bangkok (cron-based)
@@ -83,6 +88,12 @@ cron.schedule('0 0 25 * *', async () => {
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Ensure MongoDB is connected on startup
+connectMongo().catch((e) => {
+  console.error('MongoDB connection failed at startup:', e && e.message ? e.message : e);
+  process.exit(1);
+});
 
 // ใช้ auth routes เท่านั้น ลบ duplicate routes
 app.use('/auth', require('./routes/auth'));

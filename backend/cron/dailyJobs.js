@@ -1,116 +1,47 @@
-const { admin, db } = require('../firebase');
-
-async function createNormalEggs(uid) {
-  const now = admin.firestore.Timestamp.now();
-  // spawn happens via 07:00 Asia/Bangkok cron
-
-  const chickensSnap = await db.collection('users').doc(uid).collection('chickens')
-    .where('type', '==', 'mother')
-    .where('feedCount', '>=', 3)
-    .where('status', '==', 'normal')
-    .get();
-
-  let createdEggs = 0;
-  const dateKey = now.toDate().toISOString().slice(0, 10); // YYYY-MM-DD
-
-  for (const doc of chickensSnap.docs) {
-    const eggId = `daily_${dateKey}_${doc.id}`;
-    const eggRef = db.collection('users').doc(uid).collection('eggs').doc(eggId);
-    try {
-      await eggRef.create({
-        type: 'normal',
-        chickenId: doc.id,
-        createdAt: now,
-        special: false,
-        source: 'daily'
-      });
-      createdEggs++;
-    } catch (e) {
-      if (!(e && e.code === 6)) {
-        throw e;
-      }
-    }
-  }
-
-  console.log(`Eggs created for user ${uid}: ${createdEggs}`);
-}
-
-async function dailyTask() {
-  console.log('🚀 Daily task started...');
-  const now = admin.firestore.Timestamp.now();
-  const usersSnap = await db.collection('users').get();
-
-  for (const userDoc of usersSnap.docs) {
-    const uid = userDoc.id;
-    const chickensRef = db.collection('users').doc(uid).collection('chickens');
-    const chickensSnap = await chickensRef.get();
-
-    for (const doc of chickensSnap.docs) {
-      const data = doc.data();
-      const lastFed = data.lastFed?.toDate();
-      const createdAt = data.createdAt?.toDate();
-
-      if (!lastFed) continue;
-
-      const hoursSinceLastFed = (now.toDate() - lastFed) / (1000*60*60);
-      let updates = {};
-
-      // เช็คและอัปเดตสถานะหิว/ตาย
-      if (hoursSinceLastFed > 72 && data.status !== 'dead') {
-        updates.status = 'dead';
-        updates.weight = 0;
-      } else if (hoursSinceLastFed > 24 && data.status !== 'hungry') {
-        updates.status = 'hungry';
-      } else if (hoursSinceLastFed <= 24 && data.status !== 'normal') {
-        updates.status = 'normal';
-      }
-
-      // ลดน้ำหนักวันละ 0.1 kg ถ้าไม่ได้ให้อาหารในวันนั้น
-      if (lastFed < new Date(new Date().setHours(0,0,0,0))) {
-        updates.weight = (data.weight || 0) - 0.1;
-        if (updates.weight <= 0) {
-          updates.status = 'dead';
-          updates.weight = 0;
-        }
-      }
-
-      if (Object.keys(updates).length > 0) {
-        await doc.ref.update(updates);
-      }
-
-      // เช็คอายุ 3 ปี → เปลี่ยนสถานะ specialSale
-      if (createdAt) {
-        const ageDays = Math.floor((now.toDate() - createdAt) / (1000*60*60*24));
-        if (ageDays >= 365*3) {
-          await doc.ref.update({ specialSale: true });
-        }
-      }
-
-      // ถ้าแม่ไก่ตายและมี marketOrder → ยกเลิก order
-      if (updates.status === 'dead' && data.marketOrderId) {
-        const orderRef = db.collection('marketOrders').doc(data.marketOrderId);
-        await orderRef.update({
-          status: 'cancelled',
-          cancelledAt: now,
-          cancelReason: 'chicken_died'
-        });
-      }
-    }
-
-    // ✅ หลังอัปเดตสถานะไก่ → สร้างไข่ตามเงื่อนไข
-    // await createNormalEggs(uid); // moved to 07:00 Asia/Bangkok cron
-  }
-  console.log('✅ Daily task completed');
-}
+﻿const { connectMongo } = require('../db/mongo');
+const chickenRepo = require('../repositories/chickenRepo');
+const eggRepo = require('../repositories/eggRepo');
 
 async function spawnDailyEggs() {
-  console.log('Spawning daily eggs for all users...');
-  const usersSnap = await db.collection('users').get();
-  for (const userDoc of usersSnap.docs) {
-    await createNormalEggs(userDoc.id);
-  }
-  console.log('Finished spawning daily eggs.');
+  console.log('Spawning daily eggs via Mongo...');
+  await dailyTaskMongo();
 }
 
-module.exports = { dailyTask, spawnDailyEggs };
+// New Mongo-based daily task (Mongo-only)
+async function dailyTaskMongo() {
+  console.log('Mongo daily task started...');
+  const now = new Date();
+  await connectMongo();
+  const Chicken = require('../models/Chicken');
+  const owners = await Chicken.distinct('ownerUid').exec();
+  for (const uid of owners) {
+    try {
+      const chickens = await chickenRepo.getChickensByOwner(uid);
+      for (const ch of chickens) {
+        const lastFed = ch.lastFed ? new Date(ch.lastFed) : null;
+        if (!lastFed) continue;
+        const hoursSinceLastFed = (now - lastFed) / (1000*60*60);
+        const update = {};
+        if (hoursSinceLastFed > 72 && ch.status !== 'dead') { update.status = 'dead'; update.weight = 0; }
+        else if (hoursSinceLastFed > 24 && ch.status !== 'hungry') { update.status = 'hungry'; }
+        else if (hoursSinceLastFed <= 24 && ch.status !== 'normal') { update.status = 'normal'; }
+        // Decrease weight only if the chicken has been hungry for >24 hours
+        // and is currently (or will be set to) 'hungry'. Avoid calendar-day based deduction.
+        if (hoursSinceLastFed > 24 && (ch.status === 'hungry' || update.status === 'hungry')) {
+          update.weight = Math.max(0, (ch.weight || 0) - 0.1);
+          if (update.weight === 0) update.status = 'dead';
+        }
+        if (Object.keys(update).length > 0) await chickenRepo.updateChicken(ch._id, update);
+      }
+      const eligible = chickens.filter(c => c.type === 'mother' && (c.feedCount || 0) >= 3 && c.status === 'normal');
+      const dateKey = now.toISOString().slice(0, 10);
+      const eggs = eligible.map(c => ({ userId: uid, type: 'normal', chickenId: String(c._id || c.fsId || ''), special: false, source: 'daily', key: `daily_${dateKey}_${c._id || c.fsId}` }));
+      if (eggs.length > 0) { try { await eggRepo.bulkCreateEggs(eggs); } catch (e) {} }
+    } catch (e) {
+      console.warn('dailyTaskMongo user failed', uid, e && e.message ? e.message : e);
+    }
+  }
+  console.log('Mongo daily task completed');
+}
 
+module.exports = { dailyTaskMongo, spawnDailyEggs };

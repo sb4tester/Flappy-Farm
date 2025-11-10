@@ -73,7 +73,10 @@ const updateUserProfile = (userData, token) =>
   api.put('/user/profile', userData, { headers: bearer(token) });
 
 // Farm APIs
-const getChickens = (token) => api.get('/farm/chickens', { headers: bearer(token) });
+const getChickens = (token, status) => {
+  const q = status ? `?status=${encodeURIComponent(status)}` : '';
+  return api.get(`/farm/chickens${q}`, { headers: bearer(token) });
+};
 const buyMother = (data, token) => api.post('/farm/buy-mother', data, { headers: bearer(token) });
 const feedChicken = async (id, token) => {
   const response = await api.post(`/farm/feed/${id}`, {}, { headers: bearer(token) });
@@ -90,8 +93,14 @@ const feedMultipleChickens = async (chickenIds, token) => {
   return { ...response, chickens: chickensResponse.data.chickens };
 }
 
-const sellChickensToSystem = async (quantity, token) => {
-  const response = await api.post('/api/farm/sell?type=system', { quantity }, {
+const sellChickensToSystem = async (payloadOrQuantity, token) => {
+  let body = {};
+  if (typeof payloadOrQuantity === 'number') {
+    body = { quantity: payloadOrQuantity };
+  } else if (payloadOrQuantity && typeof payloadOrQuantity === 'object') {
+    body = payloadOrQuantity;
+  }
+  const response = await api.post('/api/farm/sell?type=system', body, {
     headers: bearer(token)
   });
 
@@ -266,6 +275,21 @@ const authAPI = {
     }
   }
 };
+
+// Ensure redirect to login on 401 (Firebase session expired)
+api.interceptors.response.use(undefined, (error) => {
+  try {
+    if (error && error.response && error.response.status === 401) {
+      try { localStorage.removeItem('token'); } catch {}
+      if (typeof window !== 'undefined') {
+        const current = window.location.pathname + window.location.search;
+        const next = encodeURIComponent(current);
+        window.location.href = `/login?next=${next}`;
+      }
+    }
+  } catch {}
+  return Promise.reject(error);
+});
 
 export {
   // Auth functions

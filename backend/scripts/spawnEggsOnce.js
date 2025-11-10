@@ -1,12 +1,12 @@
-// One-off script to spawn daily eggs immediately
+// One-off script to spawn daily eggs immediately (Mongo-only)
 require('dotenv').config();
 
-const { spawnDailyEggs } = require('../cron/dailyJobs');
+const { dailyTaskMongo } = require('../cron/dailyJobs');
 
 (async function run() {
   try {
-    console.log('[spawn-eggs] Spawning daily eggs for all users (manual trigger)...');
-    await spawnDailyEggs();
+    console.log('[spawn-eggs] Spawning daily eggs for all users via Mongo (manual trigger)...');
+    await dailyTaskMongo();
     console.log('[spawn-eggs] Done.');
     process.exit(0);
   } catch (e) {
@@ -14,4 +14,3 @@ const { spawnDailyEggs } = require('../cron/dailyJobs');
     process.exit(1);
   }
 })();
-

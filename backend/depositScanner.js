@@ -1,4 +1,4 @@
-const { admin, db } = require('./firebase');
+const { connectMongo } = require('./db/mongo');
 const ethers = require('ethers');
 require('dotenv').config();
 
@@ -31,7 +31,13 @@ async function scanDepositsOnce() {
     return;
   }
 
-  const stateRef = db.collection('listenerState').doc('depositListener');
+  await connectMongo();
+  const ListenerState = require('./models/ListenerState');
+  const ProcessedTx = require('./models/ProcessedTx');
+  const userRepo = require('./repositories/userRepo');
+  const transactionRepo = require('./repositories/transactionRepo');
+  const { distributeCommission } = require('./controllers/referralController');
+  const UserState = require('./models/UserState');
 
   // Resolve token decimals once per run (fallback 18) with optional override
   let tokenDecimals = 18;
@@ -48,8 +54,8 @@ async function scanDepositsOnce() {
       console.warn('Failed to fetch token decimals, defaulting to 18:', e && e.message ? e.message : e);
     }
   }
-  const stateSnap = await stateRef.get();
-  let lastScannedBlock = stateSnap.exists ? stateSnap.data().lastScannedBlock : 0;
+  let state = await ListenerState.findOne({ key: 'depositListener' }).lean().exec();
+  let lastScannedBlock = state ? (state.lastScannedBlock || 0) : 0;
 
   const latestBlock = await provider.getBlockNumber();
   const latest = await provider.getBlock(latestBlock);
@@ -71,7 +77,7 @@ async function scanDepositsOnce() {
     return lo;
   }
 
-  if (!stateSnap.exists || lastScannedBlock === 0) {
+  if (!state || lastScannedBlock === 0) {
     let startFrom = 0;
     const startFromEnv = parseInt(process.env.LISTENER_START_BLOCK || '0', 10);
     if (startFromEnv > 0) {
@@ -103,7 +109,7 @@ async function scanDepositsOnce() {
     }
 
     lastScannedBlock = startFrom - 1;
-    await stateRef.set({ lastScannedBlock, initializedAt: admin.firestore.FieldValue.serverTimestamp(), mode: START_MODE }, { merge: true });
+    await ListenerState.updateOne({ key: 'depositListener' }, { $set: { lastScannedBlock, mode: START_MODE, updatedAt: new Date() } }, { upsert: true }).exec();
   }
 
   if (lastScannedBlock >= safeBlock) {
@@ -142,85 +148,28 @@ async function scanDepositsOnce() {
           continue;
         }
 
-        const userSnap = await db.collection('users').where('usdtWallet', '==', from).limit(1).get();
-        if (userSnap.empty) {
-          await db.collection('unknownDeposits').doc(txHash).set({
-            fromAddress: from,
-            amount: value,
-            txHash,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
+        const userState = await UserState.findOne({ usdtWallet: from }).lean().exec();
+        if (!userState) {
+          // Unknown deposit log can be handled via console or dedicated collection if needed
+          console.log(`Unknown deposit from ${from} amount ${value} tx ${txHash}`);
           continue;
         }
+        const userId = userState.uid;
 
-        const userDoc = userSnap.docs[0];
-        const userId = userDoc.id;
+        const existing = await ProcessedTx.findById(txHash).lean().exec();
+        if (existing) continue; // already processed
 
-        await db.runTransaction(async (tx) => {
-          const processedRef = db.collection('processedTxs').doc(txHash);
-          const processedSnap = await tx.get(processedRef);
-          if (processedSnap.exists) return;
+        const bonus = calculateBonus(value);
+        const totalCoin = value + bonus;
+        const bonusPercent = value > 0 ? (bonus * 100) / value : 0;
 
-          const usersCol = db.collection('users');
-          const userRef = usersCol.doc(userId);
-          const userDataSnap = await tx.get(userRef);
-          const userData = userDataSnap.data() || {};
-
-          // PRE-READ REFERRAL CHAIN (no writes yet)
-          const referralLevels = [
-            { level: 1, percent: 5 },
-            { level: 2, percent: 4 },
-            { level: 3, percent: 3 },
-            { level: 4, percent: 2 },
-            { level: 5, percent: 1 },
-          ];
-          const chain = [];
-          let currentUserId = userId;
-          for (const lv of referralLevels) {
-            const currentSnap = await tx.get(usersCol.doc(currentUserId));
-            const currentData = currentSnap.data() || {};
-            const referrerId = currentData.referrer;
-            if (!referrerId) break;
-            const refSnap = await tx.get(usersCol.doc(referrerId));
-            if (!refSnap.exists) break;
-            const refData = refSnap.data() || {};
-            const isAgent = !!refData.isAgent || (refData.activeUserCount >= 50);
-            chain.push({ lv: lv.level, percent: lv.percent, referrerId, refData, isAgent });
-            currentUserId = referrerId;
-          }
-
-          // COMPUTE VALUES
-          const bonus = calculateBonus(value);
-          const totalCoin = value + bonus;
-          const bonusPercent = value > 0 ? (bonus * 100) / value : 0;
-
-          // WRITES AFTER ALL READS
-          tx.set(userRef, { coin_balance: (userData.coin_balance || 0) + totalCoin }, { merge: true });
-          tx.set(userRef.collection('transactions').doc(txHash), {
-            type: 'deposit',
-            amount: totalCoin,
-            metadata: { usdtAmount: value, bonusPercent, txHash, channel: 'onchain.listener' },
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
-          tx.set(processedRef, { userId, amount: value, confirmedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-
-          for (const entry of chain) {
-            if (!entry.isAgent) continue;
-            const commissionAmount = value * entry.percent / 100;
-            tx.set(usersCol.doc(entry.referrerId), { commission_balance: (entry.refData.commission_balance || 0) + commissionAmount }, { merge: true });
-            const commissionId = txHash + '-lv' + entry.lv;
-            tx.set(usersCol.doc(entry.referrerId).collection('commissions').doc(commissionId), {
-              fromUser: userId,
-              level: entry.lv,
-              amount: commissionAmount,
-              baseType: 'deposit',
-              createdAt: admin.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-          }
-        });
+        await userRepo.incCoins(userId, totalCoin);
+        await transactionRepo.createTransaction({ userId, type: 'DEPOSIT', amountCoin: totalCoin, amountUSDT: value, meta: { txHash, bonusPercent, channel: 'onchain.listener' } });
+        await ProcessedTx.create({ _id: txHash, userId, amount: value, confirmedAt: new Date() });
+        try { await distributeCommission(userId, value); } catch (e) { console.warn('distributeCommission failed', e && e.message ? e.message : e); }
       }
 
-      await stateRef.set({ lastScannedBlock: toBlock, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      await ListenerState.updateOne({ key: 'depositListener' }, { $set: { lastScannedBlock: toBlock, updatedAt: new Date(), error: null } }, { upsert: true }).exec();
       lastScannedBlock = toBlock;
       fromBlock = toBlock + 1;
       if (CHUNK_SIZE < 2000) CHUNK_SIZE = Math.min(2000, Math.floor(CHUNK_SIZE * 1.25 + 1));
@@ -233,7 +182,7 @@ async function scanDepositsOnce() {
         console.log(`Reducing chunk size to ${CHUNK_SIZE} and retrying...`);
         continue;
       }
-      await stateRef.set({ lastScannedBlock: fromBlock - 1, error: msg, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      await ListenerState.updateOne({ key: 'depositListener' }, { $set: { lastScannedBlock: fromBlock - 1, error: msg, updatedAt: new Date() } }, { upsert: true }).exec();
       throw err;
     }
   }

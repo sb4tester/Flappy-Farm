@@ -68,3 +68,33 @@ const buyFood = async (req, res) => {
 module.exports = {
   buyFood
 }; 
+
+// --- Mongo-only implementation ---
+const { connectMongo } = require('../db/mongo');
+const userRepo = require('../repositories/userRepo');
+const transactionRepo = require('../repositories/transactionRepo');
+
+async function buyFoodMongoOnly(req, res) {
+  try {
+    const { amount } = req.body;
+    const userId = req.user.uid;
+    if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+
+    const cost = Math.ceil(amount / 30);
+    await connectMongo();
+    try {
+      await userRepo.decCoins(userId, cost);
+    } catch (e) {
+      if (e && e.message === 'INSUFFICIENT_COINS') return res.status(400).json({ error: 'Not enough coins' });
+      throw e;
+    }
+    const foodAfter = await userRepo.incFood(userId, amount);
+    await transactionRepo.createTransaction({ userId, type: 'BUY_FOOD', amountCoin: -cost, meta: { foodAmount: amount } });
+    return res.json({ success: true, data: { food: foodAfter } });
+  } catch (e) {
+    console.error('Error buying food (Mongo-only):', e && e.message ? e.message : e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+module.exports.buyFood = buyFoodMongoOnly;

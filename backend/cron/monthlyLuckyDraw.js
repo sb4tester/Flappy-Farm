@@ -1,5 +1,6 @@
-const { admin, db } = require('../firebase');
+const { connectMongo } = require('../db/mongo');
 const { drawWinners } = require('./luckyDraw');
+const luckyRunRepo = require('../repositories/luckyRunRepo');
 
 function toCycleString(date) {
   const y = date.getFullYear();
@@ -29,15 +30,11 @@ async function runMonthlyLuckyDraw(options = {}) {
   }
 
   const cycle = toCycleString(targetDate);
-  const runsDoc = db.collection('system').doc('luckyDraw').collection('runs').doc(cycle);
-  try {
-    await runsDoc.create({ createdAt: admin.firestore.Timestamp.now(), cycle });
-  } catch (e) {
-    if (e && e.code === 6) {
-      console.log(`[monthly-lucky] Already ran for ${cycle}, skipping.`);
-      return { skipped: true, cycle };
-    }
-    throw e;
+  await connectMongo();
+  const ensured = await luckyRunRepo.ensureRun(cycle);
+  if (!ensured.created) {
+    console.log(`[monthly-lucky] Already ran for ${cycle}, skipping.`);
+    return { skipped: true, cycle };
   }
 
   for (const pool of ['bronze', 'silver', 'gold']) {
@@ -52,4 +49,3 @@ async function runMonthlyLuckyDraw(options = {}) {
 }
 
 module.exports = { runMonthlyLuckyDraw };
-

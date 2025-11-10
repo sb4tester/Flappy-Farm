@@ -1,5 +1,7 @@
-const { db, admin } = require('../firebase');
 const { distributeCommission } = require('./referralController');
+const { connectMongo } = require('../db/mongo');
+const transactionRepo = require('../repositories/transactionRepo');
+const userRepo = require('../repositories/userRepo');
 
 exports.deposit = async (req, res) => {
   const uid = req.user.uid;
@@ -13,14 +15,15 @@ exports.deposit = async (req, res) => {
   ];
   const tier = tiers.find(t => amount >= t.threshold) || { bonus: 0 };
   const coins = Math.floor(amount * (1 + tier.bonus/100));
-  const userRef = db.collection('users').doc(uid);
-  await userRef.update({ coin_balance: admin.firestore.FieldValue.increment(coins) });
-  // Record transaction so it appears in Deposit history
-  await userRef.collection('transactions').add({
-    type: 'deposit',
-    amount: coins,
-    metadata: { usdtAmount: amount, bonusPercent: tier.bonus || 0, channel: 'finance.deposit' },
-    createdAt: admin.firestore.Timestamp.now()
+  await connectMongo();
+  await userRepo.incCoins(uid, coins);
+  // Append transaction ledger in Mongo
+  await transactionRepo.createTransaction({
+    userId: uid,
+    type: 'DEPOSIT',
+    amountCoin: coins,
+    amountUSDT: amount,
+    meta: { channel: 'finance.deposit' }
   });
   // distribute referral commission
   await distributeCommission(uid, amount);
