@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { useAuth } from './AuthContext';
 import {
   getBalance,
   getChickens,
@@ -22,6 +23,7 @@ export default function GameProvider({ children }) {
   const [chickens, setChickens] = useState([]);
   const [eggs, setEggs] = useState([]);
   const [food, setFood] = useState(0);
+  const { currentUser } = useAuth();
 
   const refreshData = async () => {
     const token = localStorage.getItem('token');
@@ -46,9 +48,51 @@ export default function GameProvider({ children }) {
     }
   };
 
+  const refreshDataSafe = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const results = await Promise.allSettled([
+        getBalance(token),
+        getChickens(token, 'all'),
+        getEggs(token),
+        getFood(token)
+      ]);
+      const [balanceRes, chickensRes, eggsRes, foodsRes] = results;
+      if (balanceRes.status === 'fulfilled') setCoins(balanceRes.value.data.coin_balance || 0); else console.warn('refreshData: getBalance failed', balanceRes.reason);
+      if (chickensRes.status === 'fulfilled') { setChickens(chickensRes.value.data.chickens || []); console.log('DEBUG: Chickens state after setChickens in GameContext:', chickensRes.value.data.chickens); } else console.warn('refreshData: getChickens failed', chickensRes.reason);
+      if (eggsRes.status === 'fulfilled') setEggs(eggsRes.value.data.eggs || []); else console.warn('refreshData: getEggs failed', eggsRes.reason);
+      if (foodsRes.status === 'fulfilled') setFood(foodsRes.value.data.food || 0); else console.warn('refreshData: getFood failed', foodsRes.reason);
+    } catch (e) {
+      console.error('refreshDataSafe unexpected error:', e);
+    }
+  };
+
   useEffect(() => {
-    refreshData();
+    refreshDataSafe();
   }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    let attempts = 0;
+    const tryRefresh = async () => {
+      if (cancelled) return;
+      const token = localStorage.getItem('token');
+      if (!token && attempts < 10) {
+        attempts += 1;
+        setTimeout(tryRefresh, 200);
+        return;
+      }
+      if (token && !cancelled) {
+        try {
+          await refreshDataSafe();
+        } catch {}
+      }
+    };
+    tryRefresh();
+    return () => { cancelled = true; };
+  }, [currentUser]);
 
   // Lightweight auto-refresh for coin balance
   useEffect(() => {
@@ -88,7 +132,7 @@ export default function GameProvider({ children }) {
         setEggs,
         food,
         setFood,
-        refreshData
+        refreshData: refreshDataSafe
       }}
     >
       {children}

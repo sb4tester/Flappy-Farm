@@ -10,7 +10,7 @@ import {
   buyIncubator
 } from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 
 const FOOD_PRICE = 1;
 const FOOD_AMOUNT = 30;
@@ -53,14 +53,14 @@ const ShopContainer = styled.div`
 `;
 
 const HeaderWrapper = styled.div`
-  width: 100%;
+  width: 95%;
   max-width: 430px;
   padding: 16px;
   z-index: 1;
 `;
 
 const PageHeader = styled.h2`
-  width: 100%;
+  width: 95%;
   text-align: center;
   margin: 16px 0 0 0;
   font-size: 1.6rem;
@@ -69,7 +69,7 @@ const PageHeader = styled.h2`
 
 const ShopContent = styled.div`
   position: relative;
-  width: 100%;
+  width: 95%;
   max-width: 430px;
   flex-grow: 1;
   box-sizing: border-box;
@@ -88,10 +88,15 @@ const ShopContent = styled.div`
 
 const PackageContainer = styled.div`
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
   padding: 0;
   width: 100%;
+  align-items: start;
+  
+  @media (max-width: 400px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const PackageContainer1 = styled(PackageContainer)`
@@ -100,6 +105,7 @@ const PackageContainer1 = styled(PackageContainer)`
 
 const PackageCard = styled.div`
   width: 100%;
+  box-sizing: border-box;
   background: ${props => props.color || '#fff'};
   border-radius: 16px;
   padding: 16px;
@@ -109,16 +115,16 @@ const PackageCard = styled.div`
   flex-direction: column;
   justify-content: space-between;
   text-align: center;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: box-shadow 0.15s ease;
   border: 1px solid rgba(0,0,0,0.04);
 
-  &:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,0.12); }
+  &:hover { box-shadow: 0 10px 24px rgba(0,0,0,0.12); }
 `;
 
 
 const PackageImage = styled.img`
-  width: 100px;
-  height: 100px;
+  width: 80px;
+  height: 80px;
   margin: 0 auto 10px auto;
   object-fit: contain;
 `;
@@ -147,6 +153,11 @@ const QuantityInput = styled.input`
   &:focus { outline: none; border-color: #4CAF50; box-shadow: 0 0 0 3px rgba(76,175,80,0.15); background: #fff; }
 `;
 
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+`;
+
 const BuyButton = styled.button`
   background: #4CAF50;
   color: white;
@@ -158,9 +169,23 @@ const BuyButton = styled.button`
   width: 100%;
   margin-top: auto;
   transition: filter 0.15s ease, transform 0.05s ease;
+  position: relative;
+  overflow: hidden; /* กันเนื้อหาในปุ่มล้น */
   &:hover:not(:disabled) { filter: brightness(1.02); }
   &:active:not(:disabled) { transform: translateY(1px); }
   &:disabled { background: #cfcfcf; cursor: not-allowed; }
+`;
+
+const Spinner = styled.span`
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ${spin} 0.8s linear infinite;
+  vertical-align: text-bottom;
 `;
 
 const FoodItemContainer = styled.div`
@@ -185,7 +210,7 @@ const SectionHeader = styled.h3`
 `;
 
 const ItemCard = styled.div`
-  width: 100%;
+  width: 95%;
   background: #fff;
   border-radius: 12px;
   padding: 16px;
@@ -221,6 +246,7 @@ const ShopPage = () => {
   const [currentTier, setCurrentTier] = useState(null);
   const [isBuyingFood, setIsBuyingFood] = useState(false);
   const [isBuyingIncubator, setIsBuyingIncubator] = useState(false);
+  const [isBuyingChicken, setIsBuyingChicken] = useState(false);
   const [chickenQuantity, setChickenQuantity] = useState(1);
   const [foodQuantity, setFoodQuantity] = useState(1);
 
@@ -234,6 +260,8 @@ const ShopPage = () => {
       setFood(foodRes.data.food || 0);
     } catch (error) {
       console.error('Failed to refresh data:', error);
+    } finally {
+      setIsBuyingChicken(false);
     }
   };
 
@@ -266,6 +294,7 @@ const ShopPage = () => {
 
   const handleBuyChicken = async (packageType = null) => {
     try {
+      if (isBuyingChicken) return;
       const token = localStorage.getItem('token');
       if (!token) {
         alert('กรุณาล็อกอินก่อนใช้งาน');
@@ -273,6 +302,7 @@ const ShopPage = () => {
         return;
       }
 
+      setIsBuyingChicken(true);
       let quantity = chickenQuantity;
       let totalPrice = 0;
 
@@ -289,16 +319,11 @@ const ShopPage = () => {
         totalPrice = currentTier ? currentTier.priceUsd * quantity : 0;
       }
 
-      let eggPackageType = null;
-      if (totalPrice >= 3000) {
-        eggPackageType = 'gold';
-      } else if (totalPrice >= 1000) {
-        eggPackageType = 'silver';
-      } else if (totalPrice >= 300) {
-        eggPackageType = 'bronze';
-      }
+      const payload = packageType
+        ? { tierId: currentTier.id, quantity, packageType }
+        : { tierId: currentTier.id, quantity };
 
-      await buyMother({ tierId: currentTier.id, quantity, packageType: eggPackageType }, token);
+      await buyMother(payload, token);
 
       setChickens(prev => prev + quantity);
       alert(`ซื้อแม่ไก่ ${quantity} ตัว สำเร็จ!`);
@@ -314,11 +339,14 @@ const ShopPage = () => {
         alert('เกิดข้อผิดพลาดในการซื้อแม่ไก่');
         console.error(error);
       }
+    } finally {
+      setIsBuyingChicken(false);
     }
   };
 
   const handleBuyFood = async (packageType = null) => {
     try {
+      if (isBuyingFood) return;
       const token = localStorage.getItem('token');
       if (!token) {
         alert('กรุณาล็อกอินก่อนใช้งาน');
@@ -397,7 +425,7 @@ const ShopPage = () => {
       </HeaderWrapper>
       <ShopContent>
         {/* Individual Chicken Purchase */}
-<div className="shop-item" style={{ width: '100%', marginTop: '20px' }}>
+<div className="shop-item" style={{ width: '95%', marginTop: '20px' }}>
   <h3>ซื้อแม่ไก่ตามจำนวน</h3>
   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
     <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -414,8 +442,9 @@ const ShopPage = () => {
     </div>
     <BuyButton 
       onClick={() => handleBuyChicken()}
-      disabled={!currentTier}
-      style={{ width: '100%' }}
+      disabled={!currentTier || isBuyingChicken}
+      aria-busy={isBuyingChicken}
+      style={{ width: '95%' }}
     >
       {currentTier ? `${currentTier.priceUsd * chickenQuantity} coin` : 'ไม่สามารถซื้อได้'}
     </BuyButton>
@@ -423,7 +452,7 @@ const ShopPage = () => {
 </div>
 
        {/* Individual Food Purchase */}
-<div className="shop-item" style={{ width: '100%', marginTop: '20px' }}>
+<div className="shop-item" style={{ width: '95%', marginTop: '20px' }}>
   <h3>ซื้ออาหารตามจำนวน</h3>
   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
     <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -441,7 +470,8 @@ const ShopPage = () => {
     <BuyButton 
       onClick={() => handleBuyFood()}
       disabled={isBuyingFood}
-      style={{ width: '100%' }}
+      aria-busy={isBuyingFood}
+      style={{ width: '95%' }}
     >
       {isBuyingFood ? 'กำลังซื้อ...' : `${FOOD_PRICE * foodQuantity} coin`}
     </BuyButton>
@@ -453,36 +483,36 @@ const ShopPage = () => {
         <PackageContainer>
           <PackageCard color="#CD7F32" textColor="#fff">
             <PackageImage src={BRONZE_EGG_ICON} alt="Bronze Egg" />
-            <PackageTitle>Bronze Package</PackageTitle>
+            <PackageTitle>Bronze</PackageTitle>
             <PackageDetails>
               - 30 แม่ไก่<br />
-              - ลุ้นไข่ทองแดงทุกสัปดาห์<br />
+              - ลุ้นไข่ทองแดง<br />
             </PackageDetails>
-            <BuyButton onClick={() => handleBuyChicken('bronze')}>
+            <BuyButton onClick={() => handleBuyChicken('bronze')} disabled={isBuyingChicken} aria-busy={isBuyingChicken}>
               300 coin
             </BuyButton>
           </PackageCard>
 
           <PackageCard color="#C0C0C0" textColor="#333">
             <PackageImage src={SILVER_EGG_ICON} alt="Silver Egg" />
-            <PackageTitle>Silver Package</PackageTitle>
+            <PackageTitle>Silver</PackageTitle>
             <PackageDetails>
               - 100 แม่ไก่<br />
-              - ลุ้นไข่เงินทุก 2 สัปดาห์<br />
+              - ลุ้นไข่เงิน<br />
             </PackageDetails>
-            <BuyButton onClick={() => handleBuyChicken('silver')}>
+            <BuyButton onClick={() => handleBuyChicken('silver')} disabled={isBuyingChicken} aria-busy={isBuyingChicken}>
               1,000 coin
             </BuyButton>
           </PackageCard>
 
           <PackageCard color="#FFD700" textColor="#333">
             <PackageImage src={GOLD_EGG_ICON} alt="Gold Egg" />
-            <PackageTitle>Gold Package</PackageTitle>
+            <PackageTitle>Gold</PackageTitle>
             <PackageDetails>
               - 300 แม่ไก่<br />
-              - ลุ้นไข่ทองคำทุก 4 สัปดาห์<br />
+              - ลุ้นไข่ทองคำ<br />
             </PackageDetails>
-            <BuyButton onClick={() => handleBuyChicken('gold')}>
+            <BuyButton onClick={() => handleBuyChicken('gold')} disabled={isBuyingChicken} aria-busy={isBuyingChicken}>
               3,000 coin
             </BuyButton>
           </PackageCard>
@@ -492,56 +522,56 @@ const ShopPage = () => {
 
 
         {/* Food Packages */}
-        <h3 style={{ marginTop: '20px', width: '100%' }}>แพ็คเกจอาหาร</h3>
+        <h3 style={{ marginTop: '20px', width: '95%' }}>แพ็คเกจอาหาร</h3>
         <PackageContainer>
           <PackageCard>
-            <PackageTitle>Mini Package</PackageTitle>
+            <PackageTitle>Mini</PackageTitle>
             <PackageDetails>
               <FoodItemContainer>
                 <FoodIcon src={FOOD_ICON} alt="Food Icon" /> 30,000 หน่วย<br />
               </FoodItemContainer>
               ประหยัด 50 coin
             </PackageDetails>
-            <BuyButton onClick={() => handleBuyFood('mini')}>
+            <BuyButton onClick={() => handleBuyFood('mini')} disabled={isBuyingFood} aria-busy={isBuyingFood}>
               950 coin
             </BuyButton>
           </PackageCard>
 
           <PackageCard>
-            <PackageTitle>Small Package</PackageTitle>
+            <PackageTitle>Small</PackageTitle>
             <PackageDetails>
               <FoodItemContainer>
                 <FoodIcon src={FOOD_ICON} alt="Food Icon" /> 90,000 หน่วย<br />
               </FoodItemContainer>
               ประหยัด 100 coin
             </PackageDetails>
-            <BuyButton onClick={() => handleBuyFood('small')}>
+            <BuyButton onClick={() => handleBuyFood('small')} disabled={isBuyingFood} aria-busy={isBuyingFood}>
               2,900 coin
             </BuyButton>
           </PackageCard>
 
           <PackageCard>
-            <PackageTitle>Medium Package</PackageTitle>
+            <PackageTitle>Medium</PackageTitle>
             <PackageDetails>
               <FoodItemContainer>
                 <FoodIcon src={FOOD_ICON} alt="Food Icon" /> 300,000 หน่วย<br />
               </FoodItemContainer>
               ประหยัด 500 coin
             </PackageDetails>
-            <BuyButton onClick={() => handleBuyFood('medium')}>
+            <BuyButton onClick={() => handleBuyFood('medium')} disabled={isBuyingFood} aria-busy={isBuyingFood}>
               9,500 coin
             </BuyButton>
           </PackageCard>
 
           <PackageCard>
-            <PackageTitle>Large Package</PackageTitle>
+            <PackageTitle>Large</PackageTitle>
             <PackageDetails>
               <FoodItemContainer>
                 <FoodIcon src={FOOD_ICON} alt="Food Icon" /> 3,000,000 หน่วย<br />
               </FoodItemContainer>
               ประหยัด 5,000 coin
             </PackageDetails>
-            <BuyButton onClick={() => handleBuyFood('large')}>
+            <BuyButton onClick={() => handleBuyFood('large')} disabled={isBuyingFood} aria-busy={isBuyingFood}>
               95,000 coin
             </BuyButton>
           </PackageCard>
@@ -560,6 +590,7 @@ const ShopPage = () => {
           <BuyButton 
             onClick={handleBuyIncubator}
             disabled={isBuyingIncubator}
+            aria-busy={isBuyingIncubator}
             style={{ width: '100%' }}
           >
             {isBuyingIncubator ? 'กำลังซื้อ...' : `ซื้อ ${INCUBATOR_PRICE} coin`}

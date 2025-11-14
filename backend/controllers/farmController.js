@@ -202,6 +202,17 @@ async function buyMother(req, res) {
     await addTickets(uid, packageType, 1); // à¸‹à¸·à¹‰à¸­ 1 à¹à¸žà¹‡à¸„ = 1 à¸ªà¸´à¸—à¸˜à¸´à¹Œ
   }
 
+  // Grant Lucky Draw tickets for manual/custom purchases by quantity thresholds
+  if (!packageType) {
+    try {
+      const { addTicketsByPoolCounts, computeTicketsFromQuantity } = require('../services/luckyDrawService');
+      const counts = computeTicketsFromQuantity(quantity);
+      await addTicketsByPoolCounts(uid, counts);
+    } catch (e) {
+      console.warn('[LuckyTickets] Failed to grant custom tickets:', e && e.message ? e.message : e);
+    }
+  }
+
   // Update total chicken purchase statistics
   await statsRepo.incTotalChickenPurchase(quantity);
 

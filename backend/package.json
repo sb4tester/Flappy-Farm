@@ -9,7 +9,8 @@
     "monthly-lucky-draw": "node scripts/runMonthlyLuckyDraw.js",
     "seed:promotions": "node scripts/seedPromotions.js",
     "export-firestore": "node scripts/exportFirestore.js",
-    "migrate:fs-to-mongo": "node scripts/migrateFirestoreToMongo.js"
+    "migrate:fs-to-mongo": "node scripts/migrateFirestoreToMongo.js",
+    "test": "node tests/luckyDrawService.test.js"
   },
   "dependencies": {
     "express": "^4.18.2",

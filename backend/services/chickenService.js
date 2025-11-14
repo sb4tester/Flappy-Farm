@@ -95,17 +95,27 @@ module.exports = {
   checkListedChickens: async () => {
     await connectMongo();
     const Chicken = require('../models/Chicken');
-    const threeDaysAgo = new Date(Date.now() - 72 * 60 * 60 * 1000);
-    const toCancel = await Chicken.find({ status: 'listed', lastFed: { $lt: threeDaysAgo } }).lean().exec();
+    // New logic: only cancel market orders for chickens that are already dead
+    // and still have an active linkage via marketOrderId.
+    const toCancel = await Chicken.find({ status: 'dead', marketOrderId: { $ne: null } }).lean().exec();
     let processed = 0;
     for (const c of toCancel) {
-      await Chicken.updateOne({ _id: c._id }, { $set: { status: 'dead', weight: 0, diedAt: new Date(), deathReason: 'market_starvation' } }).exec();
-      if (c.marketOrderId) {
-        try { await marketOrderRepo.cancelOrder(c.marketOrderId, 'chicken_died'); } catch (e) {}
+      try {
+        await marketOrderRepo.cancelOrder(c.marketOrderId, 'chicken_died');
+      } catch (e) {
+        // ignore cancellation errors to continue processing others
+      }
+      // Clear market linkage on the chicken document to reflect cancellation
+      try {
+        await Chicken.updateOne(
+          { _id: c._id },
+          { $set: { marketOrderId: null, listedAt: null } }
+        ).exec();
+      } catch (e) {
+        // ignore update errors; proceed
       }
       processed++;
     }
     return { success: true, processedCount: processed };
   },
 };
-

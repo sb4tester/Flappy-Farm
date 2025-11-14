@@ -19,6 +19,7 @@ import DepositPage from './pages/DepositPage';
 
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
+import DebugStatus from './components/DebugStatus.jsx';
 
 function AuthGuard() {
   const navigate = useNavigate();
@@ -51,6 +52,7 @@ export default function App() {
         <GameProvider>
           <Router>
             <AuthGuard /> {/* ตรวจสอบสถานะ login ทุกหน้า */}
+            <DebugStatus />
             <Routes>
               <Route path="/" element={<Lobby />} />
               <Route path="/login" element={<RegisterLogin />} />

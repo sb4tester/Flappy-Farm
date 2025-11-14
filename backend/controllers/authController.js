@@ -11,9 +11,17 @@ exports.login = async (req, res) => {
 
     const decoded = await admin.auth().verifyIdToken(idToken);
     const uid = decoded.uid;
+    const email = decoded.email || null;
 
     await connectMongo();
-    await User.updateOne({ uid }, { $setOnInsert: { uid, email: decoded.email || null, referredBy: referrer || null } }, { upsert: true });
+    const filter = email ? { $or: [{ uid }, { email }] } : { uid };
+    const update = {
+      $set: { uid },
+      $setOnInsert: { referredBy: referrer || null, createdAt: new Date() },
+      $currentDate: { updatedAt: true },
+    };
+    if (email) update.$set.email = email;
+    await User.updateOne(filter, update, { upsert: true });
     await userRepo.getOrCreate(uid);
 
     res.status(200).json({ message: 'login success', user: { uid: decoded.uid, email: decoded.email } });
@@ -46,11 +54,20 @@ exports.register = async (req, res) => {
     if (decoded.uid !== uid) return res.status(403).json({ error: 'UID mismatch' });
 
     await connectMongo();
-    await User.updateOne(
-      { uid },
-      { $setOnInsert: { uid }, $set: { email: email || decoded.email, displayName: displayName || null, photoURL: photoURL || null, referralCode: referralCode || null } },
-      { upsert: true }
-    );
+    const resolvedEmail = email || decoded.email || null;
+    const regFilter = resolvedEmail ? { $or: [{ uid }, { email: resolvedEmail }] } : { uid };
+    const regUpdate = {
+      $set: {
+        uid,
+        ...(resolvedEmail ? { email: resolvedEmail } : {}),
+        displayName: displayName || null,
+        photoURL: photoURL || null,
+        referralCode: referralCode || null,
+      },
+      $setOnInsert: { createdAt: new Date() },
+      $currentDate: { updatedAt: true },
+    };
+    await User.updateOne(regFilter, regUpdate, { upsert: true });
     await userRepo.getOrCreate(uid);
 
     res.json({ message: 'User registered successfully', user: { uid: decoded.uid, email: decoded.email } });

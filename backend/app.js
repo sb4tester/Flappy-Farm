@@ -20,52 +20,58 @@ const dailyJobs = require('./cron/dailyJobs');
 const { drawWinners } = require('./cron/luckyDraw');
 const { connectMongo } = require('./db/mongo');
 
+// Removed midnight dailyTask; logic moved to explicit 07:30 and 19:00 jobs
+
+// Spawn eggs daily at 00:00 UTC (== 07:00 Asia/Bangkok)
 cron.schedule('0 0 * * *', async () => {
-  if (typeof dailyJobs.dailyTaskMongo === 'function') {
-    await dailyJobs.dailyTaskMongo();
-  } else {
-    await dailyJobs.dailyTask();
-  }
-});
-
-// Spawn eggs daily at 07:00 Asia/Bangkok (cron-based)
-cron.schedule('0 7 * * *', async () => {
   await dailyJobs.spawnDailyEggs();
-}, { timezone: 'Asia/Bangkok' });
+}, { timezone: 'UTC' });
 
-// Fallback scheduler in case timezone handling on host is unreliable
-// Checks Bangkok time every minute and triggers once per Bangkok day at 07:00
-(function setupBangkokFallbackScheduler() {
-  const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7, no DST
-  let lastRunDateBangkok = null; // "YYYY-MM-DD"
+// Catch-up guard (UTC-aware) — checks every 5 minutes
+// - 00:30 UTC reset: after 00:35 UTC if not yet done today
+// - 12:00 UTC EOD: after 12:05 UTC if not yet done today
+// Note: main cron runs in UTC; this guard only ensures missed runs get executed
+(function setupUtcCatchupGuard() {
+  let lastResetDateUTC = null; // key: YYYY-MM-DD (UTC)
+  let lastEodDateUTC = null;   // key: YYYY-MM-DD (UTC)
 
-  function getBangkokNow() {
-    return new Date(Date.now() + BANGKOK_OFFSET_MS);
+  function getUtcDateKey(d) {
+    return new Date(d.getTime()).toISOString().slice(0, 10);
   }
 
-  function getBangkokDateKey(d) {
-    return d.toISOString().slice(0, 10); // safe because we already shifted by +7h
-  }
-
-  async function maybeRunDailyEggs() {
+  async function maybeRunUtcCatchups() {
     try {
-      const nowBkk = getBangkokNow();
-      const dateKey = getBangkokDateKey(nowBkk);
-      const hour = nowBkk.getUTCHours(); // after shift, UTC hours == Bangkok local hours
-      const minute = nowBkk.getUTCMinutes();
+      const now = new Date();
+      const dateKey = getUtcDateKey(now);
+      const hour = now.getUTCHours();
+      const minute = now.getUTCMinutes();
 
-      if (hour === 7 && minute === 0 && lastRunDateBangkok !== dateKey) {
-        console.log(`[FallbackScheduler] Triggering spawnDailyEggs for ${dateKey} (Asia/Bangkok 07:00)`);
-        await dailyJobs.spawnDailyEggs();
-        lastRunDateBangkok = dateKey;
+      // Catch-up after 00:35 UTC if reset not yet done today
+      const passedResetWindow = (hour > 0) || (hour === 0 && minute >= 35);
+      if (passedResetWindow && lastResetDateUTC !== dateKey) {
+        if (typeof dailyJobs.resetMorningStatuses === 'function') {
+          console.log(`[CatchupGuard] resetMorningStatuses for ${dateKey} (>00:35 UTC)`);
+          await dailyJobs.resetMorningStatuses();
+        }
+        lastResetDateUTC = dateKey;
+      }
+
+      // Catch-up after 12:05 UTC if EOD not yet done today
+      const passedEodWindow = (hour > 12) || (hour === 12 && minute >= 5);
+      if (passedEodWindow && lastEodDateUTC !== dateKey) {
+        if (typeof dailyJobs.endOfDayStatusUpdate === 'function') {
+          console.log(`[CatchupGuard] endOfDayStatusUpdate for ${dateKey} (>12:05 UTC)`);
+          await dailyJobs.endOfDayStatusUpdate();
+        }
+        lastEodDateUTC = dateKey;
       }
     } catch (e) {
-      console.error('[FallbackScheduler] Error while spawning daily eggs:', e && e.message ? e.message : e);
+      console.error('[CatchupGuard] Error while running UTC catch-ups:', e && e.message ? e.message : e);
     }
   }
 
   // Kick off loop
-  setInterval(maybeRunDailyEggs, 60 * 1000);
+  setInterval(maybeRunUtcCatchups, 5 * 60 * 1000);
 })();
 
 // ทุก 7 วัน → lucky draw ไข่ทองแดง
@@ -75,15 +81,38 @@ cron.schedule('0 7 * * *', async () => {
 // Removed periodic silver lucky draw (moved to monthly on 25th)
 
 // ทุก 28 วัน → lucky draw ไข่ทอง
-// Monthly lucky draw on the 25th (Asia/Bangkok), once per month
-cron.schedule('0 0 25 * *', async () => {
+// Monthly lucky draw on the 25th Bangkok midnight corresponds to 17:00 UTC on the previous (24th) day.
+// Schedule at 17:00 UTC on the 24th to match 00:00 BKK on the 25th.
+cron.schedule('0 17 24 * *', async () => {
   try {
     const { runMonthlyLuckyDraw } = require('./cron/monthlyLuckyDraw');
     await runMonthlyLuckyDraw();
   } catch (e) {
     console.error('[MonthlyLuckyDraw] Error:', e && e.message ? e.message : e);
   }
-}, { timezone: 'Asia/Bangkok' });
+}, { timezone: 'UTC' });
+
+// Morning reset at 00:30 UTC (== 07:30 Asia/Bangkok): set all non-dead chickens to hungry
+cron.schedule('30 0 * * *', async () => {
+  try {
+    if (typeof dailyJobs.resetMorningStatuses === 'function') {
+      await dailyJobs.resetMorningStatuses();
+    }
+  } catch (e) {
+    console.error('[MorningReset] Error:', e && e.message ? e.message : e);
+  }
+}, { timezone: 'UTC' });
+
+// End-of-day evaluation at 12:00 UTC (== 19:00 Asia/Bangkok)
+cron.schedule('0 12 * * *', async () => {
+  try {
+    if (typeof dailyJobs.endOfDayStatusUpdate === 'function') {
+      await dailyJobs.endOfDayStatusUpdate();
+    }
+  } catch (e) {
+    console.error('[EndOfDayStatus] Error:', e && e.message ? e.message : e);
+  }
+}, { timezone: 'UTC' });
 
 const app = express();
 app.use(cors());
@@ -135,6 +164,7 @@ app.use('/api/market', marketRoutes);
 
 // Routes
 app.use('/api/farm', farmRoutes);
+app.use('/debug', require('./routes/debug'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -144,7 +174,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.API_PORT || process.env.PORT || 5000;
 
-// On-chain deposit scanner every 1 minute (Asia/Bangkok)
+// On-chain deposit scanner every 1 minute (UTC)
 cron.schedule('*/1 * * * *', async () => {
   try {
     const { scanDepositsOnce } = require('./depositScanner');
@@ -152,7 +182,7 @@ cron.schedule('*/1 * * * *', async () => {
   } catch (e) {
     console.error('Deposit scanner error:', e && e.message ? e.message : e);
   }
-}, { timezone: 'Asia/Bangkok' });
+}, { timezone: 'UTC' });
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
 
